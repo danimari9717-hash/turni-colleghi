@@ -78,7 +78,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
   return (
     <>
       {/* Header calendario: navigazione settimana */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-fg">Calendario turni</h1>
           <p className="mt-1 font-mono text-sm text-fg-muted">
@@ -86,7 +86,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link
             href={`/?week=${prevIso}`}
             className="btn-ghost px-3 py-2 text-sm"
@@ -111,7 +111,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
             <button
               type="button"
               onClick={() => setModal({ kind: "create-blank" })}
-              className="btn-accent ml-2 px-4 py-2 text-sm"
+              className="btn-accent px-4 py-2 text-sm"
             >
               + Nuovo turno
             </button>
