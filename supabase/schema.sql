@@ -59,8 +59,10 @@ create table if not exists public.turni (
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now(),
 
-  -- Un turno non può finire prima di iniziare (controllo base).
-  constraint turni_ora_fine_dopo_inizio check (ora_fine > ora_inizio)
+  -- Un turno è valido se ora_fine != ora_inizio. Permette sia turni
+  -- same-day (es. 08:00→16:00, fine>inizio) sia overnight (es. 16:00→00:00,
+  -- fine<inizio perché attraversa mezzanotte). Esclude solo turni nulli.
+  constraint turni_ora_fine_diversa check (ora_fine <> ora_inizio)
 );
 
 comment on table  public.turni is 'Turni di lavoro assegnati agli utenti.';

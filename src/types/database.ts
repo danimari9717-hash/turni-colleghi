@@ -41,3 +41,9 @@ export type TurnoInsert = Pick<
 export type TurnoUpdate = Partial<
   Pick<Turno, "user_id" | "data" | "ora_inizio" | "ora_fine" | "note">
 >;
+
+// Turno arricchito con il nome del collega (join con team_members).
+// Usato dal calendario per mostrare i nomi senza fare client-side lookup.
+export interface TurnoWithMember extends Turno {
+  member_nome?: string;
+}

@@ -1,9 +1,15 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Header from "@/components/Header";
-import type { Profile } from "@/types/database";
+import Calendar from "@/components/Calendar";
+import { mondayOfWeek } from "@/lib/shifts";
+import type { Profile, TeamMember, TurnoWithMember } from "@/types/database";
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ week?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -23,31 +29,58 @@ export default async function Home() {
 
   const isAdmin = profile?.role === "admin";
 
+  // Determina la settimana da mostrare (searchParams.week o settimana corrente).
+  const params = await searchParams;
+  const weekParam = params.week;
+  const mondayIso = weekParam
+    ? /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(weekParam)
+      ? weekParam
+      : mondayOfWeek(new Date())
+    : mondayOfWeek(new Date());
+
+  // Calcola range date della settimana (lun-dom, UTC).
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(mondayIso + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() + i);
+    return d.toISOString().slice(0, 10);
+  });
+  const startDay = days[0];
+  const endDay = days[6];
+
+  // Fetch turni della settimana (policy turni_select_all: tutti gli autenticati).
+  const { data: turni } = await supabase
+    .from("turni")
+    .select("id, user_id, data, ora_inizio, ora_fine, note, created_by, created_at, updated_at")
+    .gte("data", startDay)
+    .lte("data", endDay)
+    .order("data", { ascending: true })
+    .order("ora_inizio", { ascending: true })
+    .returns<TurnoWithMember[]>();
+
+  // Fetch membri team (vista team_members: nome/role di tutti).
+  const { data: members } = await supabase
+    .from("team_members")
+    .select("id, nome, role")
+    .order("nome", { ascending: true })
+    .returns<TeamMember[]>();
+
+  // Arricchisce i turni con il nome del collega (lookup lato server).
+  const memberMap = new Map((members ?? []).map((m) => [m.id, m.nome]));
+  const turniWithMember: TurnoWithMember[] = (turni ?? []).map((t) => ({
+    ...t,
+    member_nome: memberMap.get(t.user_id),
+  }));
+
   return (
     <>
       <Header profile={profile} />
-      <main className="mx-auto w-full max-w-5xl px-4 py-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Calendario turni
-          </h1>
-          {isAdmin && (
-            <button
-              type="button"
-              disabled
-              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-              title="Disponibile dalla Fase 3"
-            >
-              + Nuovo turno
-            </button>
-          )}
-        </div>
-
-        <div className="mt-8 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-12 text-center dark:border-zinc-700 dark:bg-zinc-900">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Nessun turno da mostrare. La vista calendario sarà disponibile nella Fase 3.
-          </p>
-        </div>
+      <main className="mx-auto w-full max-w-6xl px-6 py-8">
+        <Calendar
+          turni={turniWithMember}
+          members={members ?? []}
+          isAdmin={isAdmin}
+          mondayIso={mondayIso}
+        />
       </main>
     </>
   );

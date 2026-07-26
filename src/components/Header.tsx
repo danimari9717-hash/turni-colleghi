@@ -10,18 +10,20 @@ export default function Header({ profile }: HeaderProps) {
   const isAdmin = profile?.role === "admin";
 
   return (
-    <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
+    <header className="border-b border-border bg-surface/80 backdrop-blur-sm">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3">
         <div className="flex items-center gap-3">
-          <span className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          {/* Logo "command center" */}
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-accent/30 bg-accent/5">
+            <span className="font-mono text-sm font-bold text-accent">T</span>
+          </div>
+          <span className="text-lg font-semibold tracking-tight text-fg">
             Turni
           </span>
           {profile && (
             <span
-              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                isAdmin
-                  ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
-                  : "bg-zinc-100 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400"
+              className={`rounded-md px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-wider ${
+                isAdmin ? "badge-admin" : "badge-employee"
               }`}
             >
               {isAdmin ? "admin" : "employee"}
@@ -31,14 +33,17 @@ export default function Header({ profile }: HeaderProps) {
 
         <div className="flex items-center gap-4">
           {profile && (
-            <span className="text-sm text-zinc-600 dark:text-zinc-400" title={profile.email}>
+            <span
+              className="font-mono text-sm text-fg-muted"
+              title={profile.email}
+            >
               {displayName}
             </span>
           )}
           <form action={signOut}>
             <button
               type="submit"
-              className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+              className="btn-ghost px-3 py-1.5 text-sm font-medium"
             >
               Esci
             </button>

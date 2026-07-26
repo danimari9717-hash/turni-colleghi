@@ -22,24 +22,32 @@ export default function LoginPage() {
   const state = isSignup ? signUpState : signInState;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 dark:bg-black">
-      <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Turni
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+    <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="panel-glow w-full max-w-sm p-8 animate-fade-in">
+        {/* Logo + titolo */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-accent/30 bg-accent/5">
+            <span className="font-mono text-lg font-bold text-accent">T</span>
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-fg">Turni</h1>
+            <p className="font-mono text-xs text-fg-dim">command center</p>
+          </div>
+        </div>
+
+        <p className="mt-6 text-sm text-fg-muted">
           {isSignup ? "Crea il tuo account" : "Accedi al tuo account"}
         </p>
 
         {/* Toggle signin / signup */}
-        <div className="mt-6 grid grid-cols-2 gap-1 rounded-lg bg-zinc-100 p-1 text-sm dark:bg-zinc-900">
+        <div className="mt-4 grid grid-cols-2 gap-1 rounded-lg border border-border bg-base p-1">
           <button
             type="button"
             onClick={() => setMode("signin")}
-            className={`rounded-md px-3 py-1.5 font-medium transition ${
+            className={`rounded-md px-3 py-1.5 font-mono text-xs uppercase tracking-wider transition ${
               !isSignup
-                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
-                : "text-zinc-500 dark:text-zinc-400"
+                ? "bg-accent/10 text-accent border border-accent/30"
+                : "text-fg-dim hover:text-fg-muted"
             }`}
           >
             Accedi
@@ -47,21 +55,21 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setMode("signup")}
-            className={`rounded-md px-3 py-1.5 font-medium transition ${
+            className={`rounded-md px-3 py-1.5 font-mono text-xs uppercase tracking-wider transition ${
               isSignup
-                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
-                : "text-zinc-500 dark:text-zinc-400"
+                ? "bg-accent/10 text-accent border border-accent/30"
+                : "text-fg-dim hover:text-fg-muted"
             }`}
           >
             Registrati
           </button>
         </div>
 
-        {/* Form (key cambia per resettare lo stato al toggle) */}
+        {/* Form */}
         <form key={mode} action={isSignup ? signUpAction : signInAction} className="mt-6 space-y-4">
           {isSignup && (
             <div>
-              <label htmlFor="nome" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <label htmlFor="nome" className="mb-1.5 block font-mono text-xs uppercase tracking-wider text-fg-dim">
                 Nome
               </label>
               <input
@@ -70,12 +78,12 @@ export default function LoginPage() {
                 type="text"
                 autoComplete="name"
                 required
-                className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
+                className="input w-full px-3 py-2 text-sm"
               />
             </div>
           )}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label htmlFor="email" className="mb-1.5 block font-mono text-xs uppercase tracking-wider text-fg-dim">
               Email
             </label>
             <input
@@ -84,11 +92,11 @@ export default function LoginPage() {
               type="email"
               autoComplete="email"
               required
-              className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
+              className="input w-full px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <label htmlFor="password" className="mb-1.5 block font-mono text-xs uppercase tracking-wider text-fg-dim">
               Password
             </label>
             <input
@@ -97,17 +105,17 @@ export default function LoginPage() {
               type="password"
               autoComplete={isSignup ? "new-password" : "current-password"}
               required
-              className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none transition focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
+              className="input w-full px-3 py-2 text-sm"
             />
           </div>
 
           {state?.error && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+            <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400 animate-fade-in">
               {state.error}
             </p>
           )}
           {state?.message && (
-            <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
+            <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400 animate-fade-in">
               {state.message}
             </p>
           )}
@@ -115,7 +123,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            className="btn-accent w-full px-4 py-2.5 text-sm"
           >
             {pending ? "Attendi…" : isSignup ? "Crea account" : "Accedi"}
           </button>
