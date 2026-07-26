@@ -12,6 +12,13 @@ export interface Profile {
   created_at: string; // ISO timestamptz
 }
 
+// Vista `public.team_members`: subset pubblico (no email) per il calendario team.
+export interface TeamMember {
+  id: string; // uuid -> profiles.id
+  nome: string;
+  role: UserRole;
+}
+
 export interface Turno {
   id: string; // uuid
   user_id: string; // uuid -> profiles.id

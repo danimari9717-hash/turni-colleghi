@@ -174,6 +174,40 @@ create policy profiles_update_self
   with check (id = auth.uid() and new.role = old.role);
 
 -- ----------------------------------------------------------------------------
+-- 6.1b Vista `team_members` — esposizione sicura di nome/role a tutto il team
+-- ----------------------------------------------------------------------------
+--  La tabella `profiles` resta self-only in SELECT (policy sopra) per non
+--  esporre `email` agli altri utenti. Per il calendario condiviso serve però
+--  mostrare nome e ruolo dei colleghi. RLS è row-level e non può nascondere
+--  colonne, quindi creiamo una VISTA che espone solo (id, nome, role).
+--
+--  La vista è di proprietà di `postgres` (owner della vista): per costrutto
+--  Postgres, una vista esegue con i privilegi del suo owner, che bypassa RLS.
+--  Questo permette alla vista di leggere tutte le righe di `profiles` anche
+--  se l'utente chiamante non avrebbe accesso via RLS. Concediamo SELECT sulla
+--  vista solo al role `authenticated`: in questo modo ogni utente autenticato
+--  vede nome/role di tutti i colleghi, MA non email.
+--
+--  NOTA: non impostiamo `security_invoker = true` (PG15+) perché
+--  proprio NON vogliamo che la vista erediti i permessi/RLS del chiamante
+--  (altrimenti restituirebbe solo la riga propria, vanificando lo scopo).
+--
+--  NOTA: RLS è una feature delle TABELLE, non delle viste. L'accesso alla
+--  vista si controlla via GRANT (sotto), non via policy.
+-- ----------------------------------------------------------------------------
+drop view if exists public.team_members;
+create view public.team_members as
+  select id, nome, role from public.profiles;
+
+comment on view public.team_members is
+  'Vista pubblica (team) con sole colonne non sensibili (id, nome, role). '
+  'Usata dal calendario condiviso per mostrare i nomi dei colleghi.';
+
+-- Concede SELECT sulla vista agli utenti autenticati.
+-- (Il role `authenticated` è il role usato da Supabase per le sessioni JWT.)
+grant select on public.team_members to authenticated;
+
+-- ----------------------------------------------------------------------------
 -- 6.2 RLS — `turni`
 -- ----------------------------------------------------------------------------
 --  SELECT: tutti gli utenti autenticati leggono tutti i turni
