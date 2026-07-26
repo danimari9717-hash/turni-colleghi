@@ -154,7 +154,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
               <div
                 key={iso}
                 className={`px-3 py-2.5 text-center border-l border-border ${
-                  today ? "bg-accent/5" : ""
+                  today ? "bg-accent/10" : ""
                 }`}
               >
                 <div
@@ -166,7 +166,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
                 </div>
                 <div
                   className={`font-mono text-sm font-medium ${
-                    today ? "text-accent" : "text-fg"
+                    today ? "text-white" : "text-fg"
                   }`}
                 >
                   {label.day}
@@ -297,7 +297,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
               {/* Header giorno */}
               <div
                 className={`flex items-center justify-between px-4 py-3 border-b border-border ${
-                  today ? "bg-accent/5" : "bg-surface-2"
+                  today ? "bg-accent/10" : "bg-surface-2"
                 }`}
               >
                 <div className="flex items-baseline gap-3">
@@ -310,7 +310,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
                   </span>
                   <span
                     className={`font-mono text-base font-semibold ${
-                      today ? "text-accent" : "text-fg"
+                      today ? "text-white" : "text-fg"
                     }`}
                   >
                     {label.day}
