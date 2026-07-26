@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { deleteTurno, type TurnoFormState } from "@/app/actions";
+import { deleteTurno } from "@/app/actions";
 import {
   SHIFTS,
   SHIFT_ORDER,
@@ -11,6 +11,7 @@ import {
   isToday,
   slotFromStart,
   type ShiftSlot,
+  type ShiftDefinition,
 } from "@/lib/shifts";
 import type { TeamMember, TurnoWithMember } from "@/types/database";
 import ShiftForm from "./ShiftForm";
@@ -55,7 +56,6 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
   const nextIso = nextWeek.toISOString().slice(0, 10);
   const todayIso = new Date().toISOString().slice(0, 10);
 
-  // Range display (es. "26/07 – 01/08")
   const firstLabel = formatDayLabel(days[0]);
   const lastLabel = formatDayLabel(days[6]);
 
@@ -70,8 +70,10 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
       setDeleteError(result.error);
       setDeletingId(null);
     }
-    // Al successo, revalidatePath ricarica la pagina server-side
   }
+
+  const openCreate = (date: string, slot: ShiftSlot) => setModal({ kind: "create", date, slot });
+  const openEdit = (turno: TurnoWithMember) => setModal({ kind: "edit", turno });
 
   return (
     <>
@@ -138,10 +140,10 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
         })}
       </div>
 
-      {/* Griglia calendario — scroll orizzontale su mobile, fissa su desktop */}
-      <div className="panel overflow-x-auto sm:overflow-hidden">
+      {/* ============ VISTA DESKTOP (≥640px): griglia orizzontale ============ */}
+      <div className="panel hidden overflow-hidden sm:block">
         {/* Header giorni */}
-        <div className="grid grid-cols-[80px_repeat(7,minmax(80px,1fr))] min-w-[640px] sm:min-w-0 sm:grid-cols-[100px_repeat(7,1fr)] border-b border-border bg-surface-2">
+        <div className="grid grid-cols-[100px_repeat(7,1fr)] border-b border-border bg-surface-2">
           <div className="px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider text-fg-dim">
             Fascia
           </div>
@@ -180,7 +182,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
           return (
             <div
               key={slot}
-              className="grid grid-cols-[80px_repeat(7,minmax(80px,1fr))] min-w-[640px] sm:min-w-0 sm:grid-cols-[100px_repeat(7,1fr)] border-b border-border last:border-b-0"
+              className="grid grid-cols-[100px_repeat(7,1fr)] border-b border-border last:border-b-0"
             >
               {/* Label fascia */}
               <div
@@ -206,7 +208,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
                 return (
                   <div
                     key={iso}
-                    className="group relative min-h-[80px] overflow-hidden border-l border-border p-1.5 sm:p-2 transition-colors"
+                    className="group relative min-h-[80px] overflow-hidden border-l border-border p-2 transition-colors"
                     style={{
                       background: hasTurni ? shift.color.bg : "var(--color-base)",
                     }}
@@ -221,76 +223,25 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
                       }
                     }}
                     onClick={() => {
-                      if (isAdmin && !hasTurni) {
-                        setModal({ kind: "create", date: iso, slot });
-                      }
+                      if (isAdmin && !hasTurni) openCreate(iso, slot);
                     }}
                     role={isAdmin && !hasTurni ? "button" : undefined}
                     title={isAdmin && !hasTurni ? "Clicca per assegnare turno" : undefined}
                   >
-                    {/* Turni nella cella */}
                     <div className="space-y-1.5">
                       {cellTurni.map((t) => (
-                        <div
+                        <TurnoCard
                           key={t.id}
-                          className="max-w-full overflow-hidden rounded-md border px-2 py-1.5 animate-fade-in"
-                          style={{
-                            borderColor: `${shift.color.accent}40`,
-                            background: `${shift.color.bg}`,
-                          }}
-                        >
-                          <div className="flex items-start justify-between gap-1">
-                            <div className="min-w-0 flex-1">
-                              <a
-                                href={`/turno/${t.id}`}
-                                className="block truncate text-sm font-medium transition hover:opacity-80"
-                                style={{ color: "var(--color-fg)" }}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {t.member_nome ?? "—"}
-                              </a>
-                              {t.note && (
-                                <div className="mt-0.5 truncate text-xs text-fg-dim">
-                                  {t.note}
-                                </div>
-                              )}
-                            </div>
-                            {/* Azioni admin */}
-                            {isAdmin && (
-                              <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setModal({ kind: "edit", turno: t });
-                                  }}
-                                  className="rounded p-0.5 text-fg-dim transition hover:text-accent"
-                                  aria-label="Modifica"
-                                  title="Modifica"
-                                >
-                                  ✎
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDelete(t.id);
-                                  }}
-                                  disabled={deletingId === t.id}
-                                  className="rounded p-0.5 text-fg-dim transition hover:text-red-400 disabled:opacity-50"
-                                  aria-label="Elimina"
-                                  title="Elimina"
-                                >
-                                  {deletingId === t.id ? "…" : "✕"}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                          turno={t}
+                          shift={shift}
+                          isAdmin={isAdmin}
+                          deleting={deletingId === t.id}
+                          onEdit={openEdit}
+                          onDelete={handleDelete}
+                        />
                       ))}
                     </div>
 
-                    {/* Indicatore "+" per admin su cella vuota */}
                     {isAdmin && !hasTurni && (
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-60 pointer-events-none">
                         <span
@@ -309,6 +260,120 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
         })}
       </div>
 
+      {/* ============ VISTA MOBILE (<640px): lista verticale di giorni ============ */}
+      <div className="space-y-3 sm:hidden">
+        {days.map((iso) => {
+          const label = formatDayLabel(iso);
+          const today = isToday(iso);
+          const dayTurni = SHIFT_ORDER.map((slot) => ({
+            slot,
+            shift: SHIFTS[slot],
+            turni: turniMap.get(`${iso}|${slot}`) ?? [],
+          }));
+          const dayHasTurni = dayTurni.some((d) => d.turni.length > 0);
+
+          return (
+            <div
+              key={iso}
+              className={`panel overflow-hidden ${
+                today ? "border-accent/40" : ""
+              }`}
+            >
+              {/* Header giorno */}
+              <div
+                className={`flex items-center justify-between px-4 py-3 border-b border-border ${
+                  today ? "bg-accent/5" : "bg-surface-2"
+                }`}
+              >
+                <div className="flex items-baseline gap-3">
+                  <span
+                    className={`font-mono text-xs uppercase tracking-wider ${
+                      today ? "text-accent" : "text-fg-dim"
+                    }`}
+                  >
+                    {label.weekday}
+                  </span>
+                  <span
+                    className={`font-mono text-base font-semibold ${
+                      today ? "text-accent" : "text-fg"
+                    }`}
+                  >
+                    {label.day}
+                  </span>
+                </div>
+                <span className="font-mono text-[11px] text-fg-dim">
+                  {dayHasTurni ? `${dayTurni.reduce((n, d) => n + d.turni.length, 0)} turni` : "vuoto"}
+                </span>
+              </div>
+
+              {/* 3 fasce */}
+              <div className="divide-y divide-border">
+                {dayTurni.map(({ slot, shift, turni: cellTurni }) => {
+                  const hasTurni = cellTurni.length > 0;
+                  return (
+                    <div
+                      key={slot}
+                      className="group relative flex items-stretch transition-colors"
+                      style={{ background: hasTurni ? shift.color.bg : "var(--color-base)" }}
+                      onClick={() => {
+                        if (isAdmin && !hasTurni) openCreate(iso, slot);
+                      }}
+                      role={isAdmin && !hasTurni ? "button" : undefined}
+                      title={isAdmin && !hasTurni ? "Tocca per assegnare turno" : undefined}
+                    >
+                      {/* Label fascia (colonna sinistra) */}
+                      <div
+                        className="flex w-20 shrink-0 flex-col justify-center px-3 py-3 border-r border-border"
+                      >
+                        <div
+                          className="font-mono text-[11px] font-medium uppercase tracking-wider"
+                          style={{ color: shift.color.accent }}
+                        >
+                          {shift.label}
+                        </div>
+                        <div className="mt-0.5 font-mono text-[10px] text-fg-dim">
+                          {shift.start}–{shift.end}
+                        </div>
+                      </div>
+
+                      {/* Contenuto fasce */}
+                      <div className="min-w-0 flex-1 p-2">
+                        {cellTurni.length > 0 ? (
+                          <div className="space-y-1.5">
+                            {cellTurni.map((t) => (
+                              <TurnoCard
+                                key={t.id}
+                                turno={t}
+                                shift={shift}
+                                isAdmin={isAdmin}
+                                deleting={deletingId === t.id}
+                                onEdit={openEdit}
+                                onDelete={handleDelete}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          isAdmin && (
+                            <div className="flex h-10 items-center justify-center opacity-30 transition-opacity group-active:opacity-70">
+                              <span
+                                className="font-mono text-base"
+                                style={{ color: shift.color.accent }}
+                              >
+                                +
+                              </span>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {/* Errore delete */}
       {deleteError && (
         <div className="mt-4 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 animate-fade-in">
@@ -321,7 +386,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
         <div className="mt-6 rounded-lg border border-dashed border-border bg-surface/50 p-8 text-center">
           <p className="font-mono text-sm text-fg-dim">
             Nessun turno assegnato per questa settimana.
-            {isAdmin && " Clicca su una cella o usa \"+ Nuovo turno\"."}
+            {isAdmin && " Tocca una fascia vuota o usa \"+ Nuovo turno\"."}
           </p>
         </div>
       )}
@@ -352,5 +417,72 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
         />
       )}
     </>
+  );
+}
+
+// ============================================================================
+// TurnoCard — card di un turno, condivisa tra vista desktop e mobile.
+// ============================================================================
+interface TurnoCardProps {
+  turno: TurnoWithMember;
+  shift: ShiftDefinition;
+  isAdmin: boolean;
+  deleting: boolean;
+  onEdit: (t: TurnoWithMember) => void;
+  onDelete: (id: string) => void;
+}
+
+function TurnoCard({ turno, shift, isAdmin, deleting, onEdit, onDelete }: TurnoCardProps) {
+  return (
+    <div
+      className="max-w-full overflow-hidden rounded-md border px-2 py-1.5 animate-fade-in"
+      style={{
+        borderColor: `${shift.color.accent}40`,
+        background: `${shift.color.bg}`,
+      }}
+    >
+      <div className="flex items-center justify-between gap-1">
+        <a
+          href={`/turno/${turno.id}`}
+          className="block truncate text-sm font-medium transition hover:opacity-80"
+          style={{ color: "var(--color-fg)" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {turno.member_nome ?? "—"}
+        </a>
+        {isAdmin && (
+          <div className="flex shrink-0 gap-1 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(turno);
+              }}
+              className="rounded p-0.5 text-fg-dim transition hover:text-accent"
+              aria-label="Modifica"
+              title="Modifica"
+            >
+              ✎
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(turno.id);
+              }}
+              disabled={deleting}
+              className="rounded p-0.5 text-fg-dim transition hover:text-red-400 disabled:opacity-50"
+              aria-label="Elimina"
+              title="Elimina"
+            >
+              {deleting ? "…" : "✕"}
+            </button>
+          </div>
+        )}
+      </div>
+      {turno.note && (
+        <div className="mt-0.5 truncate text-xs text-fg-dim">{turno.note}</div>
+      )}
+    </div>
   );
 }

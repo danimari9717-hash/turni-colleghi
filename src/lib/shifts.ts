@@ -75,13 +75,14 @@ export function formatShiftRange(start: string, end: string): string {
   return `${start} – ${end}`;
 }
 
-// Restituisce il lunedì della settimana contenente `date` (come ISO date string).
+// Restituisce il lunedì (ISO date YYYY-MM-DD, UTC) della settimana contenente `date`.
+// Calcolo in UTC per coerenza con weekDays() ed evitare off-by-one tra timezone.
 export function mondayOfWeek(date: Date): string {
   const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  const day = d.getDay(); // 0=Dom, 1=Lun, ..., 6=Sab
+  const day = d.getUTCDay(); // 0=Dom, 1=Lun, ..., 6=Sab
   const diff = day === 0 ? -6 : 1 - day; // distanza dal lunedì
-  d.setDate(d.getDate() + diff);
+  d.setUTCDate(d.getUTCDate() + diff);
+  d.setUTCHours(0, 0, 0, 0);
   return d.toISOString().slice(0, 10);
 }
 
