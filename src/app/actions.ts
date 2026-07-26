@@ -38,6 +38,18 @@ export async function createTurno(
     return { error: "Non autenticato." };
   }
 
+  // Controllo app-level: max 2 turni per (data, ora_inizio).
+  // Il trigger DB fa da safety net, ma questo dà un messaggio più chiaro.
+  const { count: existing } = await supabase
+    .from("turni")
+    .select("id", { count: "exact", head: true })
+    .eq("data", data)
+    .eq("ora_inizio", SHIFTS[slot].start);
+
+  if ((existing ?? 0) >= 2) {
+    return { error: "Slot pieno: massimo 2 persone per fascia." };
+  }
+
   const { error } = await supabase.from("turni").insert({
     user_id,
     data,

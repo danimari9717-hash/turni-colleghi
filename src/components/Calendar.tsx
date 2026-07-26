@@ -205,6 +205,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
                 const key = `${iso}|${slot}`;
                 const cellTurni = turniMap.get(key) ?? [];
                 const hasTurni = cellTurni.length > 0;
+                const canAddMore = cellTurni.length < 2;
                 return (
                   <div
                     key={iso}
@@ -213,20 +214,20 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
                       background: hasTurni ? shift.color.bg : "var(--color-base)",
                     }}
                     onMouseEnter={(e) => {
-                      if (isAdmin && !hasTurni) {
+                      if (isAdmin && canAddMore) {
                         e.currentTarget.style.background = shift.color.bgHover;
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (isAdmin && !hasTurni) {
-                        e.currentTarget.style.background = "var(--color-base)";
+                      if (isAdmin && canAddMore) {
+                        e.currentTarget.style.background = hasTurni ? shift.color.bg : "var(--color-base)";
                       }
                     }}
                     onClick={() => {
-                      if (isAdmin && !hasTurni) openCreate(iso, slot);
+                      if (isAdmin && canAddMore) openCreate(iso, slot);
                     }}
-                    role={isAdmin && !hasTurni ? "button" : undefined}
-                    title={isAdmin && !hasTurni ? "Clicca per assegnare turno" : undefined}
+                    role={isAdmin && canAddMore ? "button" : undefined}
+                    title={isAdmin && canAddMore ? (hasTurni ? "Aggiungi seconda persona" : "Clicca per assegnare turno") : undefined}
                   >
                     <div className="space-y-1.5">
                       {cellTurni.map((t) => (
@@ -242,7 +243,8 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
                       ))}
                     </div>
 
-                    {isAdmin && !hasTurni && (
+                    {/* "+" per slot vuoto (overlay) o per aggiungere seconda persona (in basso) */}
+                    {isAdmin && canAddMore && !hasTurni && (
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-60 pointer-events-none">
                         <span
                           className="font-mono text-lg"
@@ -251,6 +253,19 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
                           +
                         </span>
                       </div>
+                    )}
+                    {isAdmin && canAddMore && hasTurni && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openCreate(iso, slot);
+                        }}
+                        className="mt-1.5 flex w-full items-center justify-center rounded-md border border-dashed py-1 text-xs opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-70"
+                        style={{ borderColor: `${shift.color.accent}40`, color: shift.color.accent }}
+                      >
+                        + seconda persona
+                      </button>
                     )}
                   </div>
                 );
@@ -310,16 +325,17 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
               <div className="divide-y divide-border">
                 {dayTurni.map(({ slot, shift, turni: cellTurni }) => {
                   const hasTurni = cellTurni.length > 0;
+                  const canAddMore = cellTurni.length < 2;
                   return (
                     <div
                       key={slot}
                       className="group relative flex items-stretch transition-colors"
                       style={{ background: hasTurni ? shift.color.bg : "var(--color-base)" }}
                       onClick={() => {
-                        if (isAdmin && !hasTurni) openCreate(iso, slot);
+                        if (isAdmin && canAddMore && !hasTurni) openCreate(iso, slot);
                       }}
-                      role={isAdmin && !hasTurni ? "button" : undefined}
-                      title={isAdmin && !hasTurni ? "Tocca per assegnare turno" : undefined}
+                      role={isAdmin && canAddMore && !hasTurni ? "button" : undefined}
+                      title={isAdmin && canAddMore && !hasTurni ? "Tocca per assegnare turno" : undefined}
                     >
                       {/* Label fascia (colonna sinistra) */}
                       <div
@@ -351,9 +367,23 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
                                 onDelete={handleDelete}
                               />
                             ))}
+                            {/* Pulsante "+" per aggiungere seconda persona (mobile) */}
+                            {isAdmin && canAddMore && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openCreate(iso, slot);
+                                }}
+                                className="flex w-full items-center justify-center rounded-md border border-dashed py-1 text-xs transition-opacity active:opacity-100"
+                                style={{ borderColor: `${shift.color.accent}40`, color: shift.color.accent }}
+                              >
+                                + seconda persona
+                              </button>
+                            )}
                           </div>
                         ) : (
-                          isAdmin && (
+                          isAdmin && canAddMore && (
                             <div className="flex h-10 items-center justify-center opacity-30 transition-opacity group-active:opacity-70">
                               <span
                                 className="font-mono text-base"

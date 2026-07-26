@@ -67,6 +67,28 @@ create table if not exists public.turni (
 
 comment on table  public.turni is 'Turni di lavoro assegnati agli utenti.';
 comment on column public.turni.user_id    is 'Utente a cui è assegnato il turno.';
+
+-- Vincolo: max 2 turni per (data, ora_inizio). Postgres non supporta
+-- aggregate in CHECK, quindi usiamo una funzione + trigger BEFORE INSERT.
+create or replace function public.check_max_two_per_slot()
+returns trigger as $$
+declare
+  existing_count integer;
+begin
+  select count(*) into existing_count
+  from public.turni
+  where data = new.data and ora_inizio = new.ora_inizio and id <> new.id;
+  if existing_count >= 2 then
+    raise exception 'Slot già pieno: massimo 2 turni per data/fascia.';
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists trg_turni_max_two_per_slot on public.turni;
+create trigger trg_turni_max_two_per_slot
+  before insert or update on public.turni
+  for each row execute function public.check_max_two_per_slot();
 comment on column public.turni.created_by is 'Admin che ha creato il turno (nullable se l''admin viene eliminato).';
 
 -- Indici per le query più frequenti (calendario per data, elenco per utente).
