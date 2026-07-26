@@ -294,5 +294,153 @@ create policy turni_delete_admin
   using (public.is_admin());
 
 -- ============================================================================
+-- 7. SISTEMA OBIETTIVI E MONETE (gamification)
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- 7.1 Tipo enum per categoria obiettivo
+-- ----------------------------------------------------------------------------
+do $$ begin
+  create type obiettivo_tipo as enum ('gratta_vinci', 'incasso_tab', 'speciale');
+exception when duplicate_object then null; end $$;
+
+-- ----------------------------------------------------------------------------
+-- 7.2 Tabella `obiettivi` (predefiniti, creati da admin via SQL/seed)
+-- ----------------------------------------------------------------------------
+create table if not exists public.obiettivi (
+  id                uuid primary key default gen_random_uuid(),
+  titolo            text not null,
+  tipo              obiettivo_tipo not null,
+  valore_ricompensa integer not null check (valore_ricompensa > 0),
+  valuta            text not null check (valuta in ('fuoco', 'diamante')),
+  -- Per raggruppare le soglie incasso_tab come opzioni mutuamente esclusive.
+  -- NULL per obiettivi non raggruppati (gratta_vinci, speciale).
+  soglia_gruppo     text,
+  created_at        timestamptz not null default now()
+);
+
+comment on table public.obiettivi is 'Obiettivi predefiniti (seed). Non modificabili da employee.';
+comment on column public.obiettivi.soglia_gruppo is 'Raggruppa soglie mutuamente esclusive (es. incasso_tab). NULL = indipendente.';
+
+-- ----------------------------------------------------------------------------
+-- 7.3 Tabella `obiettivi_completati` (conferme self-report dei dipendenti)
+-- ----------------------------------------------------------------------------
+create table if not exists public.obiettivi_completati (
+  id                 uuid primary key default gen_random_uuid(),
+  obiettivo_id       uuid not null references public.obiettivi(id) on delete cascade,
+  user_id            uuid not null references public.profiles(id) on delete cascade,
+  turno_id           uuid not null references public.turni(id) on delete cascade,
+  data_completamento timestamptz not null default now(),
+  note               text
+);
+
+comment on table public.obiettivi_completati is 'Conferme obiettivi self-report dai dipendenti.';
+
+create index if not exists obj_comp_user_idx     on public.obiettivi_completati (user_id);
+create index if not exists obj_comp_turno_idx    on public.obiettivi_completati (turno_id);
+create index if not exists obj_comp_obiettivo_idx on public.obiettivi_completati (obiettivo_id);
+
+-- ----------------------------------------------------------------------------
+-- 7.4 RLS — `obiettivi`
+--   SELECT: tutti gli autenticati leggono gli obiettivi predefiniti.
+--   INSERT/UPDATE/DELETE: solo admin (gestione seed futura via UI admin).
+-- ----------------------------------------------------------------------------
+alter table public.obiettivi enable row level security;
+
+drop policy if exists obiettivi_select_all    on public.obiettivi;
+drop policy if exists obiettivi_insert_admin  on public.obiettivi;
+drop policy if exists obiettivi_update_admin  on public.obiettivi;
+drop policy if exists obiettivi_delete_admin  on public.obiettivi;
+
+create policy obiettivi_select_all
+  on public.obiettivi for select
+  to authenticated
+  using (true);
+
+create policy obiettivi_insert_admin
+  on public.obiettivi for insert
+  to authenticated
+  with check (public.is_admin());
+
+create policy obiettivi_update_admin
+  on public.obiettivi for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create policy obiettivi_delete_admin
+  on public.obiettivi for delete
+  to authenticated
+  using (public.is_admin());
+
+-- ----------------------------------------------------------------------------
+-- 7.5 RLS — `obiettivi_completati`
+--   SELECT: tutti gli autenticati leggono tutte le conferme (classifica + monitoraggio).
+--   INSERT: ogni autenticato può inserire solo conferme con il proprio user_id.
+--   UPDATE/DELETE: ogni autenticato può modificare/eliminare solo le proprie conferme.
+--   (Sistema basato su fiducia, gruppo piccolo. Admin non modifica, solo legge.)
+-- ----------------------------------------------------------------------------
+alter table public.obiettivi_completati enable row level security;
+
+drop policy if exists obj_comp_select_all   on public.obiettivi_completati;
+drop policy if exists obj_comp_insert_self  on public.obiettivi_completati;
+drop policy if exists obj_comp_update_self  on public.obiettivi_completati;
+drop policy if exists obj_comp_delete_self  on public.obiettivi_completati;
+
+create policy obj_comp_select_all
+  on public.obiettivi_completati for select
+  to authenticated
+  using (true);
+
+create policy obj_comp_insert_self
+  on public.obiettivi_completati for insert
+  to authenticated
+  with check (user_id = auth.uid());
+
+create policy obj_comp_update_self
+  on public.obiettivi_completati for update
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+create policy obj_comp_delete_self
+  on public.obiettivi_completati for delete
+  to authenticated
+  using (user_id = auth.uid());
+
+-- ----------------------------------------------------------------------------
+-- 7.6 Seed obiettivi predefiniti (idempotente)
+-- ----------------------------------------------------------------------------
+-- Gratta e vinci (indipendenti, cumulabili più volte nello stesso turno)
+insert into public.obiettivi (titolo, tipo, valore_ricompensa, valuta, soglia_gruppo)
+values
+  ('1 stecca gratta e vinci', 'gratta_vinci', 5,  'fuoco', null),
+  ('3 stecche gratta e vinci', 'gratta_vinci', 10, 'fuoco', null),
+  ('5 stecche gratta e vinci', 'gratta_vinci', 20, 'fuoco', null)
+on conflict do nothing;
+
+-- Incasso tab (SCELTA SINGOLA per turno: soglie mutuamente esclusive, stesso soglia_gruppo)
+insert into public.obiettivi (titolo, tipo, valore_ricompensa, valuta, soglia_gruppo)
+values
+  ('Incasso tab 1000€', 'incasso_tab', 5,  'fuoco',   'incasso_tab'),
+  ('Incasso tab 1500€', 'incasso_tab', 10, 'fuoco',   'incasso_tab'),
+  ('Incasso tab 2000€', 'incasso_tab', 15, 'fuoco',   'incasso_tab'),
+  ('Incasso tab 2500€', 'incasso_tab', 20, 'fuoco',   'incasso_tab'),
+  ('Incasso tab 3000€', 'incasso_tab', 1,  'diamante','incasso_tab')
+on conflict do nothing;
+
+-- Gratta e vinci vinto da cliente (valore ≥ 1000€) → diamante
+insert into public.obiettivi (titolo, tipo, valore_ricompensa, valuta, soglia_gruppo)
+values
+  ('Gratta vinto da cliente ≥1000€', 'gratta_vinci', 1, 'diamante', null)
+on conflict do nothing;
+
+-- Speciale
+insert into public.obiettivi (titolo, tipo, valore_ricompensa, valuta, soglia_gruppo)
+values
+  ('Passa Mari', 'speciale', 30, 'fuoco', null)
+on conflict do nothing;
+
+-- ============================================================================
 --  Fine schema.
 -- ============================================================================

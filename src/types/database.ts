@@ -47,3 +47,42 @@ export type TurnoUpdate = Partial<
 export interface TurnoWithMember extends Turno {
   member_nome?: string;
 }
+
+// ============================================================================
+//  Sistema obiettivi (Fase 4)
+// ============================================================================
+
+export type ObiettivoTipo = "gratta_vinci" | "incasso_tab" | "speciale";
+export type Valuta = "fuoco" | "diamante";
+
+export interface Obiettivo {
+  id: string;
+  titolo: string;
+  tipo: ObiettivoTipo;
+  valore_ricompensa: number;
+  valuta: Valuta;
+  soglia_gruppo: string | null;
+  created_at: string;
+}
+
+export interface ObiettivoCompletato {
+  id: string;
+  obiettivo_id: string;
+  user_id: string;
+  turno_id: string;
+  data_completamento: string;
+  note: string | null;
+}
+
+// Completamento arricchito con i dati dell'obiettivo (per display).
+export interface ObiettivoCompletatoWithObiettivo extends ObiettivoCompletato {
+  obiettivo?: Obiettivo;
+}
+
+// Riga classifica: utente + totale fuoco + totale diamanti.
+export interface ClassificaRow {
+  user_id: string;
+  nome: string;
+  totale_fuoco: number;
+  totale_diamanti: number;
+}

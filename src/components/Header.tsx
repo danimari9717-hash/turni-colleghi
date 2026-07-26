@@ -1,5 +1,6 @@
 import { signOut } from "@/app/login/actions";
 import type { Profile } from "@/types/database";
+import Link from "next/link";
 
 interface HeaderProps {
   profile: Pick<Profile, "nome" | "email" | "role"> | null;
@@ -32,6 +33,12 @@ export default function Header({ profile }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-4">
+          <Link
+            href="/classifica"
+            className="font-mono text-sm text-fg-muted transition hover:text-accent"
+          >
+            Classifica
+          </Link>
           {profile && (
             <span
               className="font-mono text-sm text-fg-muted"

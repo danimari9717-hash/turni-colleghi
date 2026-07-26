@@ -241,12 +241,14 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
                         >
                           <div className="flex items-start justify-between gap-1">
                             <div className="min-w-0 flex-1">
-                              <div
-                                className="truncate text-sm font-medium"
+                              <a
+                                href={`/turno/${t.id}`}
+                                className="block truncate text-sm font-medium transition hover:opacity-80"
                                 style={{ color: "var(--color-fg)" }}
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 {t.member_nome ?? "—"}
-                              </div>
+                              </a>
                               {t.note && (
                                 <div className="mt-0.5 truncate text-xs text-fg-dim">
                                   {t.note}
