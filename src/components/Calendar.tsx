@@ -138,10 +138,10 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
         })}
       </div>
 
-      {/* Griglia calendario */}
-      <div className="panel overflow-hidden">
+      {/* Griglia calendario — scroll orizzontale su mobile, fissa su desktop */}
+      <div className="panel overflow-x-auto sm:overflow-hidden">
         {/* Header giorni */}
-        <div className="grid grid-cols-[100px_repeat(7,1fr)] border-b border-border bg-surface-2">
+        <div className="grid grid-cols-[80px_repeat(7,minmax(80px,1fr))] min-w-[640px] sm:min-w-0 sm:grid-cols-[100px_repeat(7,1fr)] border-b border-border bg-surface-2">
           <div className="px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider text-fg-dim">
             Fascia
           </div>
@@ -180,7 +180,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
           return (
             <div
               key={slot}
-              className="grid grid-cols-[100px_repeat(7,1fr)] border-b border-border last:border-b-0"
+              className="grid grid-cols-[80px_repeat(7,minmax(80px,1fr))] min-w-[640px] sm:min-w-0 sm:grid-cols-[100px_repeat(7,1fr)] border-b border-border last:border-b-0"
             >
               {/* Label fascia */}
               <div
@@ -206,7 +206,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
                 return (
                   <div
                     key={iso}
-                    className="group relative min-h-[80px] border-l border-border p-2 transition-colors"
+                    className="group relative min-h-[80px] overflow-hidden border-l border-border p-1.5 sm:p-2 transition-colors"
                     style={{
                       background: hasTurni ? shift.color.bg : "var(--color-base)",
                     }}
@@ -233,7 +233,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
                       {cellTurni.map((t) => (
                         <div
                           key={t.id}
-                          className="rounded-md border px-2 py-1.5 animate-fade-in"
+                          className="max-w-full overflow-hidden rounded-md border px-2 py-1.5 animate-fade-in"
                           style={{
                             borderColor: `${shift.color.accent}40`,
                             background: `${shift.color.bg}`,

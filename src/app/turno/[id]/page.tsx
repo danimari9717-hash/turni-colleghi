@@ -83,7 +83,7 @@ export default async function TurnoPage({
   return (
     <>
       <Header profile={profile} />
-      <main className="mx-auto w-full max-w-4xl px-6 py-8">
+      <main className="safe-bottom mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
         {/* Breadcrumb + info turno */}
         <div className="mb-6">
           <Link

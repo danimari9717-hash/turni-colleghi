@@ -15,7 +15,7 @@ export default function Header({ profile }: HeaderProps) {
   const isAdmin = profile?.role === "admin";
 
   return (
-    <header className="border-b border-border bg-surface/80 backdrop-blur-sm">
+    <header className="safe-top border-b border-border bg-surface/80 backdrop-blur-sm">
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
         {/* Riga principale: logo + (desktop nav | mobile hamburger) */}
         <div className="flex h-14 items-center justify-between">

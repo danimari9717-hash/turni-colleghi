@@ -22,7 +22,7 @@ export default function LoginPage() {
   const state = isSignup ? signUpState : signInState;
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="safe-top safe-bottom flex min-h-screen items-center justify-center px-4">
       <div className="panel-glow w-full max-w-sm p-8 animate-fade-in">
         {/* Logo + titolo */}
         <div className="flex items-center gap-3">

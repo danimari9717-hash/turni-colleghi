@@ -74,7 +74,7 @@ export default async function Home({
   return (
     <>
       <Header profile={profile} />
-      <main className="mx-auto w-full max-w-6xl px-6 py-8">
+      <main className="safe-bottom mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <Calendar
           turni={turniWithMember}
           members={members ?? []}

@@ -52,6 +52,19 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Safe area iOS (notch/Dynamic Island) — usata da header e bottom bar.
+   viewportFit: cover già impostato in layout.tsx viewport. */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-x {
+  padding-left: max(env(safe-area-inset-left, 0px), 1rem);
+  padding-right: max(env(safe-area-inset-right, 0px), 1rem);
+}
+
 /* Scrollbar dark */
 ::-webkit-scrollbar {
   width: 10px;
