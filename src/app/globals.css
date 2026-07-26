@@ -8,28 +8,38 @@
 
 @theme {
   /* Colori base */
-  --color-base: #0a0e14;
+  --color-base: #12141c;
   --color-surface: #111721;
   --color-surface-2: #161e2a;
-  --color-border: #1f2937;
+  --color-border: #2a2d3a;
   --color-border-bright: #2d3b4f;
   --color-fg: #e6edf3;
   --color-fg-muted: #8b98a9;
   --color-fg-dim: #5c6b7e;
 
-  /* Accent ciano elettrico */
+  /* Accent ciano elettrico (header/badge ADMIN/FAB — invariato) */
   --color-accent: #00e5ff;
   --color-accent-dim: #00b8cc;
   --color-accent-glow: rgba(0, 229, 255, 0.25);
 
   /* Fasce orarie */
-  --color-morning: #ffb300;
-  --color-afternoon: #ff5722;
-  --color-night: #7c4dff;
+  --color-morning: #ffc93c;
+  --color-afternoon: #ff6b4a;
+  --color-night: #8b7fff;
+
+  /* Verde per card turno assegnato */
+  --color-shift-card-bg: #1b3a2f;
+  --color-shift-card-fg: #6fe3a5;
+  --color-shift-card-border: #2e7d32;
 
   /* Font */
-  --font-sans: var(--font-sans), "Space Grotesk", system-ui, sans-serif;
+  --font-sans: var(--font-sans), "Poppins", system-ui, sans-serif;
   --font-mono: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Titoli: Poppins SemiBold/Bold con letter-spacing stretto */
+h1, h2, h3 {
+  letter-spacing: -0.3px;
 }
 
 /* Reset base */

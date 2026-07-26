@@ -437,15 +437,15 @@ function TurnoCard({ turno, shift, isAdmin, deleting, onEdit, onDelete }: TurnoC
     <div
       className="max-w-full overflow-hidden rounded-md border px-2 py-1.5 animate-fade-in"
       style={{
-        borderColor: `${shift.color.accent}40`,
-        background: `${shift.color.bg}`,
+        borderColor: "var(--color-shift-card-border)",
+        background: "var(--color-shift-card-bg)",
       }}
     >
       <div className="flex items-center justify-between gap-1">
         <a
           href={`/turno/${turno.id}`}
           className="block truncate text-sm font-medium transition hover:opacity-80"
-          style={{ color: "var(--color-fg)" }}
+          style={{ color: "var(--color-shift-card-fg)" }}
           onClick={(e) => e.stopPropagation()}
         >
           {turno.member_nome ?? "—"}
@@ -481,7 +481,12 @@ function TurnoCard({ turno, shift, isAdmin, deleting, onEdit, onDelete }: TurnoC
         )}
       </div>
       {turno.note && (
-        <div className="mt-0.5 truncate text-xs text-fg-dim">{turno.note}</div>
+        <div
+          className="mt-0.5 truncate text-xs"
+          style={{ color: "var(--color-shift-card-fg)", opacity: 0.7 }}
+        >
+          {turno.note}
+        </div>
       )}
     </div>
   );
