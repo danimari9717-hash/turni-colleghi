@@ -86,3 +86,14 @@ export interface ClassificaRow {
   totale_fuoco: number;
   totale_diamanti: number;
 }
+
+// Adjustment manuale punti (admin). delta può essere negativo.
+export interface PuntiAdjustment {
+  id: string;
+  user_id: string;
+  delta_fuoco: number;
+  delta_diamanti: number;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+}

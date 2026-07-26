@@ -6,7 +6,6 @@ import { groupByTipo, formatReward, VALUTE, TIPI_LABEL } from "@/lib/objectives"
 import type {
   Obiettivo,
   ObiettivoCompletatoWithObiettivo,
-  ObiettivoTipo,
 } from "@/types/database";
 
 interface ObjectivesPanelProps {
@@ -38,11 +37,7 @@ export default function ObjectivesPanel({
     null,
   );
 
-  // Mostra toast al successo
   useEffect(() => {
-    if (state?.success) {
-      // Il toast viene generato dal bottone cliccato (vedi handleComplete)
-    }
     if (state?.error) {
       const t: Toast = { id: Date.now(), message: state.error, color: "#ef4444" };
       setToasts((prev) => [...prev, t]);
@@ -56,21 +51,11 @@ export default function ObjectivesPanel({
     setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== t.id)), 2000);
   }
 
-  // Raggruppa obiettivi per tipo
   const groups = groupByTipo(obiettivi);
 
-  // Completati dell'utente corrente per questo turno
-  const myCompletati = completati.filter((c) => c.user_id === currentUserId);
-
-  // Per incasso_tab: trova quale soglia è selezionata (se c'è)
-  const incassoTabSelected = myCompletati.find(
-    (c) => c.obiettivo?.tipo === "incasso_tab",
-  );
-
-  // Conta completati per obiettivo (per mostrare "x2" "x3" sui cumulabili)
-  function countForObiettivo(objId: string): number {
-    return myCompletati.filter((c) => c.obiettivo_id === objId).length;
-  }
+  // Single-select: il completamento dell'utente corrente per questo turno (al massimo 1)
+  const mySelected = completati.find((c) => c.user_id === currentUserId);
+  const selectedObiettivoId = mySelected?.obiettivo_id;
 
   async function handleComplete(formData: FormData, obiettivo: Obiettivo) {
     showToast(formatReward(obiettivo), VALUTE[obiettivo.valuta].color);
@@ -86,7 +71,6 @@ export default function ObjectivesPanel({
     fd.set("id", id);
     fd.set("turno_id", turnoId);
     await rimuoviCompletamento(null, fd);
-    // revalidatePath ricarica
   }
 
   const canEdit = isOwnTurno;
@@ -107,154 +91,69 @@ export default function ObjectivesPanel({
         </div>
       )}
 
-      {/* Sezione: Gratta e vinci (bottoni rapidi cumulabili) */}
-      {groups.gratta_vinci.length > 0 && (
-        <ObjectiveSection
-          title={TIPI_LABEL.gratta_vinci}
-          subtitle="Cumulabili · clicca per confermare"
-        >
-          <div className="flex flex-wrap gap-2">
-            {groups.gratta_vinci.map((o) => {
-              const count = countForObiettivo(o.id);
-              return (
-                <form key={o.id} action={(fd) => handleComplete(fd, o)}>
-                  <input type="hidden" name="obiettivo_id" value={o.id} />
-                  <input type="hidden" name="turno_id" value={turnoId} />
-                  <button
-                    type="submit"
-                    disabled={!canEdit || pending}
-                    className="group relative rounded-lg border px-3 py-2 text-sm transition-all 120ms disabled:cursor-not-allowed disabled:opacity-40"
-                    style={{
-                      borderColor: count > 0 ? `${VALUTE[o.valuta].color}60` : "var(--color-border)",
-                      background: count > 0 ? `${VALUTE[o.valuta].color}10` : "var(--color-base)",
-                    }}
-                  >
-                    <span className="text-fg">{o.titolo}</span>
-                    <span
-                      className="ml-2 font-mono text-xs font-medium"
-                      style={{ color: VALUTE[o.valuta].color }}
-                    >
-                      {formatReward(o)}
-                    </span>
-                    {count > 0 && (
-                      <span
-                        className="ml-2 rounded-full px-1.5 py-0.5 font-mono text-[10px] font-bold"
-                        style={{
-                          background: VALUTE[o.valuta].color,
-                          color: "#000",
-                        }}
-                      >
-                        ×{count}
-                      </span>
-                    )}
-                  </button>
-                </form>
-              );
-            })}
-          </div>
-        </ObjectiveSection>
+      {canEdit && (
+        <div className="rounded-md border border-border bg-surface px-4 py-3 text-sm text-fg-muted">
+          Seleziona un solo obiettivo per turno. Scegliendone uno diverso, la selezione precedente viene sostituita.
+        </div>
       )}
 
-      {/* Sezione: Incasso tab (radio, selezione singola mutuamente esclusiva) */}
-      {groups.incasso_tab.length > 0 && (
-        <ObjectiveSection
-          title={TIPI_LABEL.incasso_tab}
-          subtitle="Selezione singola · sostituisce la precedente"
-        >
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {groups.incasso_tab.map((o) => {
-              const isSelected = incassoTabSelected?.obiettivo_id === o.id;
-              return (
-                <form key={o.id} action={(fd) => handleComplete(fd, o)}>
-                  <input type="hidden" name="obiettivo_id" value={o.id} />
-                  <input type="hidden" name="turno_id" value={turnoId} />
-                  <button
-                    type="submit"
-                    disabled={!canEdit || pending}
-                    className="flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all 120ms disabled:cursor-not-allowed disabled:opacity-40"
-                    style={{
-                      borderColor: isSelected ? `${VALUTE[o.valuta].color}` : "var(--color-border)",
-                      background: isSelected ? `${VALUTE[o.valuta].color}10` : "var(--color-base)",
-                      boxShadow: isSelected ? `0 0 12px ${VALUTE[o.valuta].color}30` : "none",
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="flex h-4 w-4 items-center justify-center rounded-full border-2"
-                        style={{
-                          borderColor: isSelected ? VALUTE[o.valuta].color : "var(--color-border-bright)",
-                        }}
-                      >
-                        {isSelected && (
-                          <span
-                            className="h-2 w-2 rounded-full"
-                            style={{ background: VALUTE[o.valuta].color }}
-                          />
-                        )}
-                      </span>
-                      <span className="text-sm text-fg">{o.titolo}</span>
-                    </div>
-                    <span
-                      className="font-mono text-sm font-medium"
-                      style={{ color: VALUTE[o.valuta].color }}
+      {/* Renderizza ogni sezione con radio-style single-select */}
+      {(["gratta_vinci", "incasso_tab", "speciale"] as const).map((tipo) => {
+        const groupObiettivi = groups[tipo];
+        if (groupObiettivi.length === 0) return null;
+        return (
+          <ObjectiveSection
+            key={tipo}
+            title={TIPI_LABEL[tipo]}
+            subtitle="Selezione singola · sostituisce la precedente"
+          >
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {groupObiettivi.map((o) => {
+                const isSelected = selectedObiettivoId === o.id;
+                return (
+                  <form key={o.id} action={(fd) => handleComplete(fd, o)}>
+                    <input type="hidden" name="obiettivo_id" value={o.id} />
+                    <input type="hidden" name="turno_id" value={turnoId} />
+                    <button
+                      type="submit"
+                      disabled={!canEdit || pending}
+                      className="flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all 120ms disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{
+                        borderColor: isSelected ? `${VALUTE[o.valuta].color}` : "var(--color-border)",
+                        background: isSelected ? `${VALUTE[o.valuta].color}10` : "var(--color-base)",
+                        boxShadow: isSelected ? `0 0 12px ${VALUTE[o.valuta].color}30` : "none",
+                      }}
                     >
-                      {formatReward(o)}
-                    </span>
-                  </button>
-                </form>
-              );
-            })}
-          </div>
-        </ObjectiveSection>
-      )}
-
-      {/* Sezione: Speciali */}
-      {groups.speciale.length > 0 && (
-        <ObjectiveSection
-          title={TIPI_LABEL.speciale}
-          subtitle="Cumulabili · clicca per confermare"
-        >
-          <div className="flex flex-wrap gap-2">
-            {groups.speciale.map((o) => {
-              const count = countForObiettivo(o.id);
-              return (
-                <form key={o.id} action={(fd) => handleComplete(fd, o)}>
-                  <input type="hidden" name="obiettivo_id" value={o.id} />
-                  <input type="hidden" name="turno_id" value={turnoId} />
-                  <button
-                    type="submit"
-                    disabled={!canEdit || pending}
-                    className="group relative rounded-lg border px-3 py-2 text-sm transition-all 120ms disabled:cursor-not-allowed disabled:opacity-40"
-                    style={{
-                      borderColor: count > 0 ? `${VALUTE[o.valuta].color}60` : "var(--color-border)",
-                      background: count > 0 ? `${VALUTE[o.valuta].color}10` : "var(--color-base)",
-                    }}
-                  >
-                    <span className="text-fg">{o.titolo}</span>
-                    <span
-                      className="ml-2 font-mono text-xs font-medium"
-                      style={{ color: VALUTE[o.valuta].color }}
-                    >
-                      {formatReward(o)}
-                    </span>
-                    {count > 0 && (
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2"
+                          style={{
+                            borderColor: isSelected ? VALUTE[o.valuta].color : "var(--color-border-bright)",
+                          }}
+                        >
+                          {isSelected && (
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{ background: VALUTE[o.valuta].color }}
+                            />
+                          )}
+                        </span>
+                        <span className="text-sm text-fg">{o.titolo}</span>
+                      </div>
                       <span
-                        className="ml-2 rounded-full px-1.5 py-0.5 font-mono text-[10px] font-bold"
-                        style={{
-                          background: VALUTE[o.valuta].color,
-                          color: "#000",
-                        }}
+                        className="font-mono text-sm font-medium"
+                        style={{ color: VALUTE[o.valuta].color }}
                       >
-                        ×{count}
+                        {formatReward(o)}
                       </span>
-                    )}
-                  </button>
-                </form>
-              );
-            })}
-          </div>
-        </ObjectiveSection>
-      )}
+                    </button>
+                  </form>
+                );
+              })}
+            </div>
+          </ObjectiveSection>
+        );
+      })}
 
       {/* Riepilogo completati (tutti gli utenti, per monitoraggio) */}
       {completati.length > 0 && (

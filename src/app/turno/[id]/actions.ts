@@ -10,10 +10,8 @@ export interface ObiettivoFormState {
 
 /**
  * Conferma un obiettivo per il turno corrente (self-report).
- * - Per obiettivi con soglia_gruppo (incasso_tab): se esiste già una conferma
- *   dello stesso gruppo per lo stesso turno+utente, la sostituisce.
- * - Per obiettivi senza soglia_gruppo (gratta_vinci, speciale): inserisce e basta
- *   (cumulabile più volte nello stesso turno).
+ * SINGLE-SELECT: selezionandone uno, qualsiasi obiettivo precedente
+ * per lo stesso turno+utente viene eliminato (comportamento radio).
  */
 export async function completaObiettivo(
   prevState: ObiettivoFormState | null,
@@ -35,37 +33,12 @@ export async function completaObiettivo(
     return { error: "Non autenticato." };
   }
 
-  // Recupera l'obiettivo per sapere se ha un soglia_gruppo
-  const { data: obiettivo, error: objErr } = await supabase
-    .from("obiettivi")
-    .select("soglia_gruppo")
-    .eq("id", obiettivo_id)
-    .single();
-
-  if (objErr || !obiettivo) {
-    return { error: "Obiettivo non trovato." };
-  }
-
-  // Se ha soglia_gruppo, elimina eventuali conferme precedenti dello stesso gruppo
-  // per lo stesso turno + stesso utente (selezione singola mutuamente esclusiva)
-  if (obiettivo.soglia_gruppo) {
-    // Trova gli obiettivi dello stesso gruppo
-    const { data: sameGroup } = await supabase
-      .from("obiettivi")
-      .select("id")
-      .eq("soglia_gruppo", obiettivo.soglia_gruppo);
-
-    const sameGroupIds = (sameGroup ?? []).map((o) => o.id);
-
-    if (sameGroupIds.length > 0) {
-      await supabase
-        .from("obiettivi_completati")
-        .delete()
-        .eq("turno_id", turno_id)
-        .eq("user_id", user.id)
-        .in("obiettivo_id", sameGroupIds);
-    }
-  }
+  // Single-select: elimina TUTTI i completamenti precedenti per questo turno+utente
+  await supabase
+    .from("obiettivi_completati")
+    .delete()
+    .eq("turno_id", turno_id)
+    .eq("user_id", user.id);
 
   // Inserisce la nuova conferma
   const { error } = await supabase.from("obiettivi_completati").insert({

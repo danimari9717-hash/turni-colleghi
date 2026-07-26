@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Header from "@/components/Header";
+import AdminAdjustments from "./AdminAdjustments";
 import { VALUTE } from "@/lib/objectives";
 import type {
   Profile,
   Obiettivo,
   ObiettivoCompletatoWithObiettivo,
+  PuntiAdjustment,
   TeamMember,
 } from "@/types/database";
 
@@ -24,6 +26,8 @@ export default async function ClassificaPage() {
     .eq("id", user.id)
     .single<Pick<Profile, "id" | "nome" | "email" | "role">>();
 
+  const isAdmin = profile?.role === "admin";
+
   // Tutti i membri del team
   const { data: members } = await supabase
     .from("team_members")
@@ -31,19 +35,25 @@ export default async function ClassificaPage() {
     .order("nome", { ascending: true })
     .returns<TeamMember[]>();
 
-  // Tutti i completamenti (con dati obiettivo per calcolare totali)
+  // Tutti i completamenti
   const { data: completati } = await supabase
     .from("obiettivi_completati")
     .select("id, obiettivo_id, user_id, turno_id, data_completamento, note")
     .returns<ObiettivoCompletatoWithObiettivo[]>();
 
-  // Tutti gli obiettivi (per mappare valuta/valore)
+  // Tutti gli obiettivi
   const { data: obiettivi } = await supabase
     .from("obiettivi")
     .select("id, titolo, tipo, valore_ricompensa, valuta, soglia_gruppo, created_at")
     .returns<Obiettivo[]>();
 
-  // Costruisci mappa obiettivo -> {valuta, valore}
+  // Tutti gli adjustment manuali (per totali + UI admin)
+  const { data: adjustments } = await supabase
+    .from("punti_adjustments")
+    .select("id, user_id, delta_fuoco, delta_diamanti, note, created_by, created_at")
+    .returns<PuntiAdjustment[]>();
+
+  // Mappa obiettivo -> {valuta, valore}
   const objMap = new Map(
     (obiettivi ?? []).map((o) => [o.id, { valuta: o.valuta, valore: o.valore_ricompensa }]),
   );
@@ -54,7 +64,6 @@ export default async function ClassificaPage() {
     { user_id: string; nome: string; totale_fuoco: number; totale_diamanti: number }
   >();
 
-  // Inizializza tutti i membri (anche quelli con 0)
   for (const m of members ?? []) {
     totals.set(m.id, {
       user_id: m.id,
@@ -69,15 +78,20 @@ export default async function ClassificaPage() {
     const obj = objMap.get(c.obiettivo_id);
     if (!obj) continue;
     const t = totals.get(c.user_id);
-    if (!t) {
-      // Utente non in team_members (es. eliminato) — skip
-      continue;
-    }
+    if (!t) continue;
     if (obj.valuta === "fuoco") {
       t.totale_fuoco += obj.valore;
     } else {
       t.totale_diamanti += obj.valore;
     }
+  }
+
+  // Somma gli adjustment manuali (possono essere negativi)
+  for (const a of adjustments ?? []) {
+    const t = totals.get(a.user_id);
+    if (!t) continue;
+    t.totale_fuoco += a.delta_fuoco;
+    t.totale_diamanti += a.delta_diamanti;
   }
 
   // Ordina per totale fuoco desc, poi diamanti desc
@@ -199,6 +213,17 @@ export default async function ClassificaPage() {
             })}
           </div>
         </div>
+
+        {/* Admin adjustments (solo admin) */}
+        {isAdmin && (
+          <div className="mt-6">
+            <AdminAdjustments
+              members={members ?? []}
+              adjustments={adjustments ?? []}
+              currentUserId={user.id}
+            />
+          </div>
+        )}
       </main>
     </>
   );

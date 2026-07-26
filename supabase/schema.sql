@@ -464,5 +464,49 @@ values
 on conflict do nothing;
 
 -- ============================================================================
+-- 8. SISTEMA PUNTI MANUALI (admin adjustments)
+--    Permette all'admin di sottrarre/aggiungere punti manualmente a un utente
+--    per correggere errori. La tabella stessa funge da log (chi, quando, quanti, nota).
+-- ============================================================================
+
+create table if not exists public.punti_adjustments (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.profiles(id) on delete cascade,
+  delta_fuoco     integer not null default 0,  -- può essere negativo
+  delta_diamanti  integer not null default 0,  -- può essere negativo
+  note        text,
+  created_by  uuid references public.profiles(id) on delete set null,
+  created_at  timestamptz not null default now()
+);
+
+comment on table public.punti_adjustments is 'Adjustment manuali punti (admin). delta può essere negativo. La tabella è anche log.';
+
+create index if not exists punti_adj_user_idx on public.punti_adjustments (user_id);
+
+-- RLS: tutti leggono (trasparenza classifica), solo admin inserisce/modifica/elimina.
+alter table public.punti_adjustments enable row level security;
+
+drop policy if exists punti_adj_select_all   on public.punti_adjustments;
+drop policy if exists punti_adj_insert_admin on public.punti_adjustments;
+drop policy if exists punti_adj_update_admin on public.punti_adjustments;
+drop policy if exists punti_adj_delete_admin on public.punti_adjustments;
+
+create policy punti_adj_select_all
+  on public.punti_adjustments for select
+  to authenticated using (true);
+
+create policy punti_adj_insert_admin
+  on public.punti_adjustments for insert
+  to authenticated with check (public.is_admin());
+
+create policy punti_adj_update_admin
+  on public.punti_adjustments for update
+  to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy punti_adj_delete_admin
+  on public.punti_adjustments for delete
+  to authenticated using (public.is_admin());
+
+-- ============================================================================
 --  Fine schema.
 -- ============================================================================

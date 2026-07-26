@@ -119,6 +119,12 @@ export async function deleteTurno(
   }
 
   const supabase = await createClient();
+
+  // Safety net: elimina esplicitamente i completamenti obiettivi associati
+  // al turno prima di eliminare il turno stesso. Il FK ha on delete cascade,
+  // ma questo garantisce consistenza anche se il cascade non fosse attivo.
+  await supabase.from("obiettivi_completati").delete().eq("turno_id", id);
+
   const { error } = await supabase.from("turni").delete().eq("id", id);
 
   if (error) {
@@ -126,5 +132,6 @@ export async function deleteTurno(
   }
 
   revalidatePath("/");
+  revalidatePath("/classifica");
   return { success: true };
 }
