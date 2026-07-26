@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-sans",
@@ -17,6 +18,34 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Turni",
   description: "Gestione turni di lavoro per il team",
+  applicationName: "Turni",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "Turni",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: ["/favicon-16.png"],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0A0E14",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -31,6 +60,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-base text-fg font-sans">
         {children}
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0F1620"/>
+      <stop offset="100%" stop-color="#0A0E14"/>
+    </linearGradient>
+  </defs>
+  <!-- Sfondo con bordo sottile -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <rect x="4" y="4" width="504" height="504" rx="92" fill="none" stroke="#1f2937" stroke-width="2"/>
+  <!-- Bordo accent sottile interno -->
+  <rect x="32" y="32" width="448" height="448" rx="72" fill="none" stroke="#00E5FF" stroke-width="1.5" opacity="0.25"/>
+  <!-- T con glow -->
+  <g filter="url(#glow)">
+    <text x="256" y="340" font-family="'Space Grotesk', 'Segoe UI', system-ui, sans-serif" font-size="300" font-weight="700" fill="#00E5FF" text-anchor="middle" dominant-baseline="alphabetic">T</text>
+  </g>
+  <!-- Punto accent in basso (dettaglio "command center") -->
+  <circle cx="256" cy="420" r="6" fill="#00E5FF" opacity="0.8"/>
+</svg>
