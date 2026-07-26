@@ -117,6 +117,47 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- ----------------------------------------------------------------------------
+-- 5a. Helper: verifica se l'utente corrente è admin.
+--     Definita qui (prima dei trigger e delle policy che la usano) per
+--     garantire l'ordine di definizione corretto.
+-- ----------------------------------------------------------------------------
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles p
+    where p.id = auth.uid() and p.role = 'admin'
+  );
+$$;
+
+-- ----------------------------------------------------------------------------
+-- 5b. Trigger: impedisce ai non-admin di cambiare il ruolo (proprio o altrui)
+--     RLS non può confrontare NEW vs OLD in una policy, quindi usiamo un
+--     trigger BEFORE UPDATE. Se il ruolo cambia e l'utente corrente non è
+--     admin, solleva un'eccezione. Gli admin possono cambiare qualsiasi ruolo.
+-- ----------------------------------------------------------------------------
+create or replace function public.prevent_non_admin_role_change()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if new.role is distinct from old.role and not public.is_admin() then
+    raise exception 'Solo gli admin possono modificare il ruolo di un utente.';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_profiles_prevent_role_change on public.profiles;
+create trigger trg_profiles_prevent_role_change
+  before update on public.profiles
+  for each row execute function public.prevent_non_admin_role_change();
+
 -- ============================================================================
 -- 6. ROW LEVEL SECURITY
 -- ============================================================================
@@ -130,8 +171,11 @@ alter table public.turni    enable row level security;
 -- ----------------------------------------------------------------------------
 --  SELECT: un utente legge solo il proprio profilo.
 --  UPDATE: admin può aggiornare qualsiasi profilo (incluso il ruolo);
---          un utente non-admin può aggiornare solo il proprio profilo e
---          SOLO se non modifica il campo `role` (NEW.role = OLD.role).
+--          un utente non-admin può aggiornare solo il proprio profilo.
+--          Il controllo "non-admin non può cambiare ruolo" è affidato al
+--          trigger trg_profiles_prevent_role_change (vedi §5b), perché RLS
+--          non può confrontare NEW vs OLD in una policy (Postgres non
+--          supporta i prefissi new./old. nelle espressioni di policy).
 --  INSERT/DELETE: non esposti (le righe sono create dal trigger su auth.users;
 --                 la cancellazione avviene in cascata eliminando l'utente).
 -- ----------------------------------------------------------------------------
@@ -164,14 +208,15 @@ create policy profiles_update_admin
     )
   );
 
--- UPDATE (self, non-admin): proprio profilo, senza cambiare ruolo.
+-- UPDATE (self, non-admin): proprio profilo.
 --   using  -> quali righe può selezionare per l'update (la propria)
---   check  -> stato risultante ammissibile (proprio + role invariato)
+--   check  -> stato risultante ammissibile (deve restare la propria riga)
+--   Il controllo sul ruolo è gestito dal trigger trg_profiles_prevent_role_change.
 create policy profiles_update_self
   on public.profiles for update
   to authenticated
   using (id = auth.uid())
-  with check (id = auth.uid() and new.role = old.role);
+  with check (id = auth.uid());
 
 -- ----------------------------------------------------------------------------
 -- 6.1b Vista `team_members` — esposizione sicura di nome/role a tutto il team
@@ -220,20 +265,6 @@ drop policy if exists turni_select_all      on public.turni;
 drop policy if exists turni_insert_admin    on public.turni;
 drop policy if exists turni_update_admin    on public.turni;
 drop policy if exists turni_delete_admin    on public.turni;
-
--- Helper: verifica se l'utente corrente è admin.
--- (definita come funzione riusabile per leggibilità delle policy)
-create or replace function public.is_admin()
-returns boolean
-language sql
-stable
-security definer set search_path = public
-as $$
-  select exists (
-    select 1 from public.profiles p
-    where p.id = auth.uid() and p.role = 'admin'
-  );
-$$;
 
 -- SELECT: tutti gli autenticati vedono tutti i turni.
 create policy turni_select_all
