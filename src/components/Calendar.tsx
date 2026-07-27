@@ -467,14 +467,18 @@ function TurnoCard({ turno, shift, isAdmin, deleting, onEdit, onDelete }: TurnoC
     <div
       className="max-w-full overflow-hidden px-3 py-2 animate-fade-in"
       style={{
+        // Glass simulato: sfondo molto trasparente per far passare il gradiente body,
+        // + gradient diagonale marcato che simula il riflesso luce sul vetro.
+        // Il blur reale su sfondo uniforme non è visibile, quindi ci affidiamo
+        // a trasparenza + bordo luminoso + inner glow per dare percezione di vetro.
         background:
-          "linear-gradient(180deg, rgba(126, 235, 176, 0.18) 0%, rgba(46, 125, 50, 0.12) 100%)",
-        backdropFilter: "blur(12px) saturate(140%)",
-        WebkitBackdropFilter: "blur(12px) saturate(140%)",
-        border: "1px solid rgba(126, 235, 176, 0.4)",
+          "linear-gradient(135deg, rgba(126, 235, 176, 0.22) 0%, rgba(46, 125, 50, 0.08) 60%, rgba(126, 235, 176, 0.14) 100%)",
+        backdropFilter: "blur(12px) saturate(160%)",
+        WebkitBackdropFilter: "blur(12px) saturate(160%)",
+        border: "1px solid rgba(126, 235, 176, 0.55)",
         borderRadius: "14px",
         boxShadow:
-          "inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 2px 14px rgba(0, 0, 0, 0.22)",
+          "inset 0 1px 0 0 rgba(255, 255, 255, 0.2), inset 0 0 12px rgba(126, 235, 176, 0.12), 0 2px 14px rgba(0, 0, 0, 0.28)",
       }}
     >
       <div className="flex items-center justify-between gap-1">
