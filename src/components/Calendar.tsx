@@ -89,20 +89,20 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href={`/?week=${prevIso}`}
-            className="btn-ghost px-3 py-2 text-sm"
+            className="btn-glass px-3 py-2 text-sm"
             aria-label="Settimana precedente"
           >
             ←
           </Link>
           <Link
             href={`/?week=${todayIso}`}
-            className="btn-ghost px-4 py-2 text-sm font-medium"
+            className="btn-glass px-4 py-2 text-sm font-medium"
           >
             Oggi
           </Link>
           <Link
             href={`/?week=${nextIso}`}
-            className="btn-ghost px-3 py-2 text-sm"
+            className="btn-glass px-3 py-2 text-sm"
             aria-label="Settimana successiva"
           >
             →
@@ -154,7 +154,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
               <div
                 key={iso}
                 className={`px-3 py-2.5 text-center border-l border-border ${
-                  today ? "bg-accent/10" : ""
+                  today ? "today-highlight" : ""
                 }`}
               >
                 <div
@@ -291,13 +291,13 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
             <div
               key={iso}
               className={`panel overflow-hidden ${
-                today ? "border-accent/40" : ""
+                today ? "today-card" : ""
               }`}
             >
               {/* Header giorno */}
               <div
                 className={`flex items-center justify-between px-5 py-4 border-b border-border ${
-                  today ? "bg-accent/10" : "bg-surface-2"
+                  today ? "today-highlight" : "bg-surface-2"
                 }`}
               >
                 <div className="flex items-baseline gap-3">
@@ -465,13 +465,16 @@ interface TurnoCardProps {
 function TurnoCard({ turno, shift, isAdmin, deleting, onEdit, onDelete }: TurnoCardProps) {
   return (
     <div
-      className="max-w-full overflow-hidden rounded-xl border px-3 py-2 animate-fade-in"
+      className="max-w-full overflow-hidden px-3 py-2 animate-fade-in"
       style={{
-        borderColor: "var(--color-shift-card-border)",
-        background: "var(--color-shift-card-bg)",
-        backdropFilter: "blur(8px)",
-        WebkitBackdropFilter: "blur(8px)",
-        boxShadow: "0 2px 12px rgba(0, 0, 0, 0.18)",
+        background:
+          "linear-gradient(180deg, rgba(126, 235, 176, 0.18) 0%, rgba(46, 125, 50, 0.12) 100%)",
+        backdropFilter: "blur(12px) saturate(140%)",
+        WebkitBackdropFilter: "blur(12px) saturate(140%)",
+        border: "1px solid rgba(126, 235, 176, 0.4)",
+        borderRadius: "14px",
+        boxShadow:
+          "inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 2px 14px rgba(0, 0, 0, 0.22)",
       }}
     >
       <div className="flex items-center justify-between gap-1">
