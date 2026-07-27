@@ -218,15 +218,13 @@ create policy profiles_select_self
 
 -- SELECT (admin): tutti i profili (necessario per la schermata
 -- "Gestione utenti" che mostra email + ruolo di ogni utente).
+-- Usa public.is_admin() (security definer, bypassa RLS) per evitare
+-- infinite recursion: una subquery inline su profiles triggererebbe
+-- di nuovo questa policy, causando "infinite recursion detected in policy".
 create policy profiles_select_admin
   on public.profiles for select
   to authenticated
-  using (
-    exists (
-      select 1 from public.profiles p
-      where p.id = auth.uid() and p.role = 'admin'
-    )
-  );
+  using (public.is_admin());
 
 -- UPDATE (admin): qualsiasi profilo, qualsiasi modifica (incl. ruolo).
 create policy profiles_update_admin
