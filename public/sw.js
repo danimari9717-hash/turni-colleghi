@@ -4,7 +4,7 @@
 // - Asset statici (JS/CSS/font/immagini): cache-first.
 // - API Supabase: sempre network (no cache, dati live).
 
-const CACHE_VERSION = "turni-v1";
+const CACHE_VERSION = "turni-v2";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PRECACHE = [
   "/",

@@ -89,21 +89,54 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href={`/?week=${prevIso}`}
-            className="btn-glass px-3 py-2 text-sm"
+            className="px-3 py-2 text-sm"
             aria-label="Settimana precedente"
+            style={{
+              background: "rgba(255, 255, 255, 0.07)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              border: "1px solid rgba(255, 255, 255, 0.25)",
+              borderRadius: "12px",
+              color: "var(--color-fg)",
+              display: "inline-flex",
+              alignItems: "center",
+              textDecoration: "none",
+            }}
           >
             ←
           </Link>
           <Link
             href={`/?week=${todayIso}`}
-            className="btn-glass px-4 py-2 text-sm font-medium"
+            className="px-4 py-2 text-sm font-medium"
+            style={{
+              background: "rgba(255, 255, 255, 0.07)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              border: "1px solid rgba(255, 255, 255, 0.25)",
+              borderRadius: "12px",
+              color: "var(--color-fg)",
+              display: "inline-flex",
+              alignItems: "center",
+              textDecoration: "none",
+            }}
           >
             Oggi
           </Link>
           <Link
             href={`/?week=${nextIso}`}
-            className="btn-glass px-3 py-2 text-sm"
+            className="px-3 py-2 text-sm"
             aria-label="Settimana successiva"
+            style={{
+              background: "rgba(255, 255, 255, 0.07)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              border: "1px solid rgba(255, 255, 255, 0.25)",
+              borderRadius: "12px",
+              color: "var(--color-fg)",
+              display: "inline-flex",
+              alignItems: "center",
+              textDecoration: "none",
+            }}
           >
             →
           </Link>
@@ -465,20 +498,21 @@ interface TurnoCardProps {
 function TurnoCard({ turno, shift, isAdmin, deleting, onEdit, onDelete }: TurnoCardProps) {
   return (
     <div
-      className="max-w-full overflow-hidden px-3 py-2 animate-fade-in"
+      className="max-w-full px-3 py-2 animate-fade-in"
       style={{
-        // Glass simulato: sfondo molto trasparente per far passare il gradiente body,
-        // + gradient diagonale marcato che simula il riflesso luce sul vetro.
-        // Il blur reale su sfondo uniforme non è visibile, quindi ci affidiamo
-        // a trasparenza + bordo luminoso + inner glow per dare percezione di vetro.
-        background:
-          "linear-gradient(135deg, rgba(126, 235, 176, 0.22) 0%, rgba(46, 125, 50, 0.08) 60%, rgba(126, 235, 176, 0.14) 100%)",
-        backdropFilter: "blur(12px) saturate(160%)",
-        WebkitBackdropFilter: "blur(12px) saturate(160%)",
-        border: "1px solid rgba(126, 235, 176, 0.55)",
-        borderRadius: "14px",
-        boxShadow:
-          "inset 0 1px 0 0 rgba(255, 255, 255, 0.2), inset 0 0 12px rgba(126, 235, 176, 0.12), 0 2px 14px rgba(0, 0, 0, 0.28)",
+        // Valori esatti richiesti:
+        // Sfondo: rgba(46, 125, 50, 0.18) — verde opacità 18%
+        // Blur: backdrop-filter blur(20px) — sfoca il contenuto dietro (cella colorata del calendario)
+        // Bordo: 1.5px rgba(111, 227, 165, 0.5) — verde chiaro opacità 50%
+        // Border-radius: 20px
+        // In CSS il backdrop-filter è automaticamente ritagliato al border-radius
+        // (equivalente di ClipRRect + BackdropFilter in Flutter non necessario)
+        background: "rgba(46, 125, 50, 0.18)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: "1.5px solid rgba(111, 227, 165, 0.5)",
+        borderRadius: "20px",
+        boxShadow: "0 2px 14px rgba(0, 0, 0, 0.22)",
       }}
     >
       <div className="flex items-center justify-between gap-1">
