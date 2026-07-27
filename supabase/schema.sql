@@ -447,9 +447,9 @@ create policy obj_comp_delete_self
 -- Gratta e vinci (indipendenti, cumulabili più volte nello stesso turno)
 insert into public.obiettivi (titolo, tipo, valore_ricompensa, valuta, soglia_gruppo)
 values
-  ('1 stecca gratta e vinci', 'gratta_vinci', 5,  'fuoco', null),
-  ('3 stecche gratta e vinci', 'gratta_vinci', 10, 'fuoco', null),
-  ('5 stecche gratta e vinci', 'gratta_vinci', 20, 'fuoco', null)
+  ('Apri 1-2 stecche gratta e vinci +5🔥', 'gratta_vinci', 5,  'fuoco', null),
+  ('Apri 3-4 stecche gratta e vinci +10🔥', 'gratta_vinci', 10, 'fuoco', null),
+  ('Apri 5+ stecche di gratta e vinci +20🔥', 'gratta_vinci', 20, 'fuoco', null)
 on conflict do nothing;
 
 -- Incasso tab (SCELTA SINGOLA per turno: soglie mutuamente esclusive, stesso soglia_gruppo)

@@ -44,7 +44,7 @@ export default function Header({ profile }: HeaderProps) {
               href="/classifica"
               className="font-mono text-sm text-fg-muted transition hover:text-accent"
             >
-              Classifica
+              Classifica - FantaTab
             </Link>
             {isAdmin && (
               <Link
@@ -121,7 +121,7 @@ export default function Header({ profile }: HeaderProps) {
                 onClick={() => setMenuOpen(false)}
                 className="block rounded-md px-3 py-2 font-mono text-sm text-fg-muted transition hover:bg-surface-2 hover:text-fg"
               >
-                Classifica
+                Classifica - FantaTab
               </Link>
               {isAdmin && (
                 <Link

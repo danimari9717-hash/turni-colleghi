@@ -107,7 +107,7 @@ export default function ObjectivesPanel({
             title={TIPI_LABEL[tipo]}
             subtitle="Selezione singola · sostituisce la precedente"
           >
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {groupObiettivi.map((o) => {
                 const isSelected = selectedObiettivoId === o.id;
                 return (
@@ -117,12 +117,9 @@ export default function ObjectivesPanel({
                     <button
                       type="submit"
                       disabled={!canEdit || pending}
-                      className="flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all 120ms disabled:cursor-not-allowed disabled:opacity-40"
-                      style={{
-                        borderColor: isSelected ? `${VALUTE[o.valuta].color}` : "var(--color-border)",
-                        background: isSelected ? `${VALUTE[o.valuta].color}10` : "var(--color-base)",
-                        boxShadow: isSelected ? `0 0 12px ${VALUTE[o.valuta].color}30` : "none",
-                      }}
+                      className={`flex w-full items-center justify-between rounded-2xl border px-5 py-4 text-left transition-all 250ms disabled:cursor-not-allowed disabled:opacity-40 ${
+                        isSelected ? "obj-card-selected" : "obj-card"
+                      }`}
                     >
                       <div className="flex items-center gap-3">
                         <span
@@ -138,10 +135,10 @@ export default function ObjectivesPanel({
                             />
                           )}
                         </span>
-                        <span className="text-sm text-fg">{o.titolo}</span>
+                        <span className="text-sm font-medium text-fg">{o.titolo}</span>
                       </div>
                       <span
-                        className="font-mono text-sm font-medium"
+                        className="font-mono text-base font-bold"
                         style={{ color: VALUTE[o.valuta].color }}
                       >
                         {formatReward(o)}
@@ -228,8 +225,8 @@ function ObjectiveSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="panel p-5">
-      <div className="mb-4">
+    <div className="panel p-6">
+      <div className="mb-5">
         <h3 className="font-mono text-sm font-medium uppercase tracking-wider text-fg">
           {title}
         </h3>

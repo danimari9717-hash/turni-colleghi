@@ -1,36 +1,44 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   Command Center — Tema dark tecnico
-   Sfondo #0A0E14, accent ciano #00E5FF, card con bordi sottili + glow.
+   Glass + Vibrant — Tema dark con gradiente, glassmorphism, glow vivaci.
+   Sfondo gradiente verticale, card in vetro semi-trasparenti con blur,
+   accent ciano→verde acqua, colori turno saturi con glow leggero.
    Font: Poppins (testo) + JetBrains Mono (orari/dati).
    ============================================================================ */
 
 @theme {
-  /* Colori base */
-  --color-base: #1c1f2b;
-  --color-surface: #111721;
-  --color-surface-2: #161e2a;
-  --color-border: #2a2d3a;
-  --color-border-bright: #2d3b4f;
+  /* Colori base — il --color-base resta come fallback, ma il body
+     usa un gradiente verticale (vedi sotto). */
+  --color-base: #0f1119;
+  --color-surface: rgba(255, 255, 255, 0.04);
+  --color-surface-2: rgba(255, 255, 255, 0.06);
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-bright: rgba(255, 255, 255, 0.14);
   --color-fg: #e6edf3;
-  --color-fg-muted: #8b98a9;
-  --color-fg-dim: #5c6b7e;
+  --color-fg-muted: #9aa7b8;
+  --color-fg-dim: #6b7a8d;
 
-  /* Accent ciano elettrico (header/badge ADMIN/FAB — invariato) */
+  /* Accent ciano elettrico → verde acqua (gradiente CTA) */
   --color-accent: #00e5ff;
+  --color-accent-2: #00ffa3;
   --color-accent-dim: #00b8cc;
-  --color-accent-glow: rgba(0, 229, 255, 0.25);
+  --color-accent-glow: rgba(0, 229, 255, 0.28);
 
-  /* Fasce orarie */
-  --color-morning: #ffc93c;
-  --color-afternoon: #ff6b4a;
-  --color-night: #8b7fff;
+  /* Fasce orarie — saturazione aumentata */
+  --color-morning: #ffd24a;
+  --color-afternoon: #ff7d52;
+  --color-night: #9b8cff;
 
   /* Verde per card turno assegnato */
-  --color-shift-card-bg: #1b3a2f;
-  --color-shift-card-fg: #6fe3a5;
-  --color-shift-card-border: #2e7d32;
+  --color-shift-card-bg: rgba(46, 125, 50, 0.18);
+  --color-shift-card-fg: #7eebb0;
+  --color-shift-card-border: rgba(46, 125, 50, 0.45);
+
+  /* Podio classifica */
+  --color-gold: #ffd24a;
+  --color-silver: #c7d2e0;
+  --color-bronze: #e0935a;
 
   /* Font */
   --font-sans: var(--font-sans), "Poppins", system-ui, sans-serif;
@@ -48,18 +56,22 @@ h1, h2, h3 {
 }
 
 html {
-  background: var(--color-base);
+  /* Fallback per browser senza supporto gradient — colore base scuro */
+  background: #0f1119;
   color: var(--color-fg);
 }
 
 body {
+  /* Gradiente verticale sottile: #181B2E (alto) → #0F1119 (basso).
+     Aggiungiamo anche un leggero bagliore ciano in alto per profondità. */
   background:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 229, 255, 0.06), transparent),
-    var(--color-base);
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 229, 255, 0.08), transparent),
+    linear-gradient(180deg, #181b2e 0%, #0f1119 100%);
   background-attachment: fixed;
   color: var(--color-fg);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Safe area iOS (notch/Dynamic Island) — usata da header e bottom bar.
@@ -81,96 +93,189 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-base);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border-bright);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-fg-dim);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 /* Utility classes custom */
 @layer components {
-  /* Card pannello di controllo */
+  /* Card pannello di controllo — glassmorphism.
+     backdrop-filter con fallback: se non supportato, lo sfondo
+     semi-trasparente resta comunque leggibile (rgba 0.04). */
   .panel {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
   }
 
   .panel-glow {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border-bright);
-    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(0, 229, 255, 0.18);
+    border-radius: 24px;
     box-shadow:
       0 0 0 1px rgba(0, 229, 255, 0.04),
-      0 0 20px rgba(0, 229, 255, 0.05);
+      0 0 24px rgba(0, 229, 255, 0.08);
   }
 
-  /* Bottoni */
+  /* Card in vetro con accento personalizzato (verde turno, oro obiettivo, ecc.)
+     Uso: className="glass-card" style={{ '--glass-accent': '...' }} */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid color-mix(in srgb, var(--glass-accent, #ffffff) 28%, transparent);
+    border-radius: 24px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+  }
+
+  /* Bottoni — CTA principale con gradiente ciano → verde acqua */
   .btn-accent {
-    background: var(--color-accent);
+    background: linear-gradient(135deg, #00e5ff 0%, #00ffa3 100%);
     color: #001316;
-    font-weight: 600;
-    border-radius: 8px;
-    transition: all 120ms cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: 700;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 229, 255, 0.22);
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
   }
   .btn-accent:hover {
-    background: var(--color-accent-dim);
-    box-shadow: 0 0 16px var(--color-accent-glow);
+    box-shadow: 0 6px 24px rgba(0, 229, 255, 0.35);
+    transform: translateY(-1px);
+  }
+  .btn-accent:active {
+    transform: translateY(0);
   }
   .btn-accent:disabled {
     opacity: 0.4;
     cursor: not-allowed;
     box-shadow: none;
+    transform: none;
   }
 
   .btn-ghost {
-    background: transparent;
+    background: rgba(255, 255, 255, 0.03);
     color: var(--color-fg-muted);
     border: 1px solid var(--color-border);
-    border-radius: 8px;
-    transition: all 120ms cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 12px;
+    transition: all 160ms cubic-bezier(0.4, 0, 0.2, 1);
   }
   .btn-ghost:hover {
     color: var(--color-fg);
     border-color: var(--color-border-bright);
-    background: var(--color-surface-2);
+    background: rgba(255, 255, 255, 0.07);
   }
 
   /* Input */
   .input {
-    background: var(--color-base);
+    background: rgba(0, 0, 0, 0.25);
     border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: 12px;
     color: var(--color-fg);
-    transition: border-color 120ms, box-shadow 120ms;
+    transition: border-color 160ms, box-shadow 160ms;
   }
   .input:focus {
     outline: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 1px var(--color-accent-glow);
+    box-shadow: 0 0 0 2px var(--color-accent-glow);
   }
 
   /* Badge ruolo */
   .badge-admin {
-    background: rgba(0, 229, 255, 0.12);
+    background: rgba(0, 229, 255, 0.14);
     color: var(--color-accent);
-    border: 1px solid rgba(0, 229, 255, 0.3);
+    border: 1px solid rgba(0, 229, 255, 0.32);
+    box-shadow: 0 0 12px rgba(0, 229, 255, 0.18);
   }
   .badge-employee {
-    background: rgba(139, 152, 169, 0.12);
+    background: rgba(154, 167, 184, 0.12);
     color: var(--color-fg-muted);
     border: 1px solid var(--color-border-bright);
+  }
+
+  /* Badge fasce orarie — glow leggero dello stesso colore.
+     Da applicare SOLO a badge/etichette colorate (MATTINO/POMERIDIO/NOTTE),
+     NON agli orari semplici. */
+  .badge-shift {
+    border-radius: 8px;
+    padding: 2px 8px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .badge-morning {
+    color: var(--color-morning);
+    background: rgba(255, 210, 74, 0.12);
+    border: 1px solid rgba(255, 210, 74, 0.32);
+    box-shadow: 0 0 12px rgba(255, 210, 74, 0.22);
+  }
+  .badge-afternoon {
+    color: var(--color-afternoon);
+    background: rgba(255, 125, 82, 0.12);
+    border: 1px solid rgba(255, 125, 82, 0.32);
+    box-shadow: 0 0 12px rgba(255, 125, 82, 0.22);
+  }
+  .badge-night {
+    color: var(--color-night);
+    background: rgba(155, 140, 255, 0.12);
+    border: 1px solid rgba(155, 140, 255, 0.32);
+    box-shadow: 0 0 12px rgba(155, 140, 255, 0.22);
+  }
+
+  /* Card obiettivo — gradiente caldo giallo → arancio, più grande. */
+  .obj-card {
+    background: linear-gradient(135deg, rgba(255, 201, 60, 0.14) 0%, rgba(255, 107, 74, 0.14) 100%);
+    border: 1px solid rgba(255, 175, 64, 0.32);
+    border-radius: 20px;
+    transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .obj-card-selected {
+    background: linear-gradient(135deg, rgba(255, 201, 60, 0.22) 0%, rgba(255, 107, 74, 0.22) 100%);
+    border-color: rgba(255, 201, 60, 0.6);
+    box-shadow:
+      0 0 0 1px rgba(255, 201, 60, 0.3),
+      0 0 24px rgba(255, 175, 64, 0.35);
+    transform: scale(1.02);
+  }
+
+  /* Podio classifica — glow oro/argento/bronzo per le prime 3 posizioni. */
+  .podium-gold {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 210, 74, 0.45);
+    border-radius: 24px;
+    box-shadow: 0 0 28px rgba(255, 210, 74, 0.22);
+  }
+  .podium-silver {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(199, 210, 224, 0.4);
+    border-radius: 24px;
+    box-shadow: 0 0 28px rgba(199, 210, 224, 0.18);
+  }
+  .podium-bronze {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(224, 147, 90, 0.4);
+    border-radius: 24px;
+    box-shadow: 0 0 28px rgba(224, 147, 90, 0.18);
   }
 }
 
 /* Animazioni rapide e nette */
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 12px var(--color-accent-glow); }
-  50% { box-shadow: 0 0 20px var(--color-accent-glow); }
+  50% { box-shadow: 0 0 22px var(--color-accent-glow); }
 }
 
 .animate-pulse-glow {
@@ -183,7 +288,7 @@ body {
 }
 
 .animate-fade-in {
-  animation: fade-in 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fade-in 160ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes scale-in {
@@ -192,5 +297,19 @@ body {
 }
 
 .animate-scale-in {
-  animation: scale-in 100ms cubic-bezier(0.4, 0, 0.2, 1);
+  animation: scale-in 140ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Numeri (orari, date, punteggi) — peso Bold/SemiBold per carattere.
+   Applicato a elementi con classe font-mono per dare più peso ai dati. */
+.font-mono {
+  font-weight: 600;
+}
+
+/* Riduci movimento se l'utente lo richiede (accessibilità). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

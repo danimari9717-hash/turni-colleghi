@@ -115,33 +115,36 @@ export default async function ClassificaPage() {
           </a>
         </div>
 
-        <h1 className="mb-6 text-2xl font-semibold tracking-tight text-fg">Classifica</h1>
+        <h1 className="mb-6 text-2xl font-semibold tracking-tight text-fg">Classifica - FantaTab</h1>
 
         {/* Podio diamanti (top 3 per diamanti) */}
-        <div className="panel-glow mb-6 p-6 animate-fade-in">
-          <h2 className="mb-4 flex items-center gap-2 font-mono text-sm uppercase tracking-wider text-fg">
+        <div className="mb-6 p-6 animate-fade-in" style={{
+          background: "rgba(255, 255, 255, 0.04)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          borderRadius: "24px",
+        }}>
+          <h2 className="mb-5 flex items-center gap-2 font-mono text-sm uppercase tracking-wider text-fg">
             <span className="text-lg">{VALUTE.diamante.symbol}</span>
             Trofei diamanti
           </h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {[...classifica]
               .sort((a, b) => b.totale_diamanti - a.totale_diamanti)
               .slice(0, 3)
               .map((r, i) => {
                 const positions = ["🥇", "🥈", "🥉"];
+                const podiumClass = i === 0 ? "podium-gold" : i === 1 ? "podium-silver" : "podium-bronze";
                 return (
                   <div
                     key={r.user_id}
-                    className="rounded-lg border p-4 text-center"
-                    style={{
-                      borderColor: r.totale_diamanti > 0 ? `${VALUTE.diamante.color}40` : "var(--color-border)",
-                      background: r.totale_diamanti > 0 ? `${VALUTE.diamante.color}08` : "var(--color-base)",
-                    }}
+                    className={`${podiumClass} p-5 text-center`}
                   >
-                    <div className="text-2xl">{positions[i]}</div>
-                    <div className="mt-1 truncate text-sm font-medium text-fg">{r.nome}</div>
+                    <div className="text-3xl">{positions[i]}</div>
+                    <div className="mt-2 truncate text-sm font-medium text-fg">{r.nome}</div>
                     <div
-                      className="mt-2 font-mono text-2xl font-bold"
+                      className="mt-3 font-mono text-3xl font-bold"
                       style={{ color: VALUTE.diamante.color }}
                     >
                       {r.totale_diamanti}
@@ -154,25 +157,25 @@ export default async function ClassificaPage() {
         </div>
 
         {/* Classifica fuoco (lista ordinata con barre) */}
-        <div className="panel p-6">
-          <h2 className="mb-4 flex items-center gap-2 font-mono text-sm uppercase tracking-wider text-fg">
+        <div className="panel p-7">
+          <h2 className="mb-5 flex items-center gap-2 font-mono text-sm uppercase tracking-wider text-fg">
             <span className="text-lg">{VALUTE.fuoco.symbol}</span>
             Classifica fuoco
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {classifica.map((r, i) => {
               const isMe = r.user_id === user.id;
               const pct = (r.totale_fuoco / maxFuoco) * 100;
               return (
                 <div
                   key={r.user_id}
-                  className={`rounded-lg border p-4 ${
+                  className={`rounded-2xl border p-5 ${
                     isMe ? "border-accent/40 bg-accent/5" : "border-border bg-base"
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-sm text-fg-dim">#{i + 1}</span>
+                      <span className="font-mono text-sm font-bold text-fg-dim">#{i + 1}</span>
                       <span className="text-sm font-medium text-fg">
                         {r.nome}
                         {isMe && (
@@ -183,14 +186,14 @@ export default async function ClassificaPage() {
                     <div className="flex items-center gap-4">
                       {r.totale_diamanti > 0 && (
                         <span
-                          className="font-mono text-sm font-medium"
+                          className="font-mono text-sm font-bold"
                           style={{ color: VALUTE.diamante.color }}
                         >
                           {r.totale_diamanti} {VALUTE.diamante.symbol}
                         </span>
                       )}
                       <span
-                        className="font-mono text-lg font-bold"
+                        className="font-mono text-xl font-bold"
                         style={{ color: VALUTE.fuoco.color }}
                       >
                         {r.totale_fuoco}
@@ -198,13 +201,13 @@ export default async function ClassificaPage() {
                     </div>
                   </div>
                   {/* Barra progress */}
-                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-base">
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-base">
                     <div
                       className="h-full rounded-full transition-all 300ms"
                       style={{
                         width: `${pct}%`,
                         background: `linear-gradient(90deg, ${VALUTE.fuoco.color}80, ${VALUTE.fuoco.color})`,
-                        boxShadow: `0 0 8px ${VALUTE.fuoco.color}40`,
+                        boxShadow: `0 0 10px ${VALUTE.fuoco.color}50`,
                       }}
                     />
                   </div>

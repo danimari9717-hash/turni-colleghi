@@ -26,10 +26,10 @@ export const SHIFTS: Record<ShiftSlot, ShiftDefinition> = {
     end: "16:00",
     color: {
       name: "amber",
-      accent: "#FFC93C",
-      glow: "rgba(255, 201, 60, 0.25)",
-      bg: "rgba(255, 201, 60, 0.06)",
-      bgHover: "rgba(255, 201, 60, 0.12)",
+      accent: "#FFD24A",
+      glow: "rgba(255, 210, 74, 0.32)",
+      bg: "rgba(255, 210, 74, 0.07)",
+      bgHover: "rgba(255, 210, 74, 0.14)",
     },
   },
   afternoon: {
@@ -39,10 +39,10 @@ export const SHIFTS: Record<ShiftSlot, ShiftDefinition> = {
     end: "00:00",
     color: {
       name: "orange",
-      accent: "#FF6B4A",
-      glow: "rgba(255, 107, 74, 0.25)",
-      bg: "rgba(255, 107, 74, 0.06)",
-      bgHover: "rgba(255, 107, 74, 0.12)",
+      accent: "#FF7D52",
+      glow: "rgba(255, 125, 82, 0.32)",
+      bg: "rgba(255, 125, 82, 0.07)",
+      bgHover: "rgba(255, 125, 82, 0.14)",
     },
   },
   night: {
@@ -52,10 +52,10 @@ export const SHIFTS: Record<ShiftSlot, ShiftDefinition> = {
     end: "08:00",
     color: {
       name: "violet",
-      accent: "#8B7FFF",
-      glow: "rgba(139, 127, 255, 0.25)",
-      bg: "rgba(139, 127, 255, 0.06)",
-      bgHover: "rgba(139, 127, 255, 0.12)",
+      accent: "#9B8CFF",
+      glow: "rgba(155, 140, 255, 0.32)",
+      bg: "rgba(155, 140, 255, 0.07)",
+      bgHover: "rgba(155, 140, 255, 0.14)",
     },
   },
 };

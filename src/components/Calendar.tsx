@@ -296,7 +296,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
             >
               {/* Header giorno */}
               <div
-                className={`flex items-center justify-between px-4 py-3 border-b border-border ${
+                className={`flex items-center justify-between px-5 py-4 border-b border-border ${
                   today ? "bg-accent/10" : "bg-surface-2"
                 }`}
               >
@@ -465,10 +465,13 @@ interface TurnoCardProps {
 function TurnoCard({ turno, shift, isAdmin, deleting, onEdit, onDelete }: TurnoCardProps) {
   return (
     <div
-      className="max-w-full overflow-hidden rounded-md border px-2 py-1.5 animate-fade-in"
+      className="max-w-full overflow-hidden rounded-xl border px-3 py-2 animate-fade-in"
       style={{
         borderColor: "var(--color-shift-card-border)",
         background: "var(--color-shift-card-bg)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
+        boxShadow: "0 2px 12px rgba(0, 0, 0, 0.18)",
       }}
     >
       <div className="flex items-center justify-between gap-1">
@@ -512,7 +515,7 @@ function TurnoCard({ turno, shift, isAdmin, deleting, onEdit, onDelete }: TurnoC
       </div>
       {turno.note && (
         <div
-          className="mt-0.5 truncate text-xs"
+          className="mt-1 truncate text-xs"
           style={{ color: "var(--color-shift-card-fg)", opacity: 0.7 }}
         >
           {turno.note}

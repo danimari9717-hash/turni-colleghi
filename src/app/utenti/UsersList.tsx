@@ -28,8 +28,8 @@ export default function UsersList({ users, currentUserId }: UsersListProps) {
         </p>
       )}
 
-      <div className="panel p-6">
-        <div className="space-y-2">
+      <div className="panel p-7">
+        <div className="space-y-3">
           {users.map((u) => {
             const isAdmin = u.role === "admin";
             const isSelf = u.id === currentUserId;
@@ -38,7 +38,7 @@ export default function UsersList({ users, currentUserId }: UsersListProps) {
             return (
               <div
                 key={u.id}
-                className="flex items-center justify-between rounded-lg border border-border bg-base px-4 py-3 animate-fade-in"
+                className="flex items-center justify-between rounded-2xl border border-border bg-base px-5 py-4 animate-fade-in"
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="min-w-0">
