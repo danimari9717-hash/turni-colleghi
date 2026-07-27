@@ -206,6 +206,7 @@ alter table public.turni    enable row level security;
 
 -- DROP policies esistenti (idempotente per re-run).
 drop policy if exists profiles_select_self   on public.profiles;
+drop policy if exists profiles_select_admin   on public.profiles;
 drop policy if exists profiles_update_admin   on public.profiles;
 drop policy if exists profiles_update_self    on public.profiles;
 
@@ -214,6 +215,18 @@ create policy profiles_select_self
   on public.profiles for select
   to authenticated
   using (id = auth.uid());
+
+-- SELECT (admin): tutti i profili (necessario per la schermata
+-- "Gestione utenti" che mostra email + ruolo di ogni utente).
+create policy profiles_select_admin
+  on public.profiles for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.role = 'admin'
+    )
+  );
 
 -- UPDATE (admin): qualsiasi profilo, qualsiasi modifica (incl. ruolo).
 create policy profiles_update_admin

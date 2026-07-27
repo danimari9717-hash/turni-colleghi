@@ -46,6 +46,14 @@ export default function Header({ profile }: HeaderProps) {
             >
               Classifica
             </Link>
+            {isAdmin && (
+              <Link
+                href="/utenti"
+                className="font-mono text-sm text-fg-muted transition hover:text-accent"
+              >
+                Utenti
+              </Link>
+            )}
             {profile && (
               <span
                 className="font-mono text-sm text-fg-muted"
@@ -115,6 +123,15 @@ export default function Header({ profile }: HeaderProps) {
               >
                 Classifica
               </Link>
+              {isAdmin && (
+                <Link
+                  href="/utenti"
+                  onClick={() => setMenuOpen(false)}
+                  className="block rounded-md px-3 py-2 font-mono text-sm text-fg-muted transition hover:bg-surface-2 hover:text-fg"
+                >
+                  Gestione utenti
+                </Link>
+              )}
               {profile && (
                 <div className="px-3 py-2 font-mono text-xs text-fg-dim">
                   {displayName}
