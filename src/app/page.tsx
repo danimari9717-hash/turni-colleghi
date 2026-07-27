@@ -21,13 +21,33 @@ export default async function Home({
   }
 
   // Legge il proprio profilo (policy profiles_select_self).
-  const { data: profile } = await supabase
+  const profileQuery = await supabase
     .from("profiles")
     .select("id, nome, email, role")
     .eq("id", user.id)
     .single<Pick<Profile, "id" | "nome" | "email" | "role">>();
+  const { data: profile, error: profileError } = profileQuery;
 
   const isAdmin = profile?.role === "admin";
+
+  // DEBUG temporaneo: mostra errori di lettura profilo.
+  if (profileError) {
+    return (
+      <main className="safe-bottom mx-auto w-full max-w-2xl px-4 py-8">
+        <h1 className="mb-4 text-xl font-semibold text-fg">Debug: errore profilo</h1>
+        <pre className="rounded-md border border-border bg-base p-4 text-xs text-red-400 overflow-auto">
+{JSON.stringify({
+  userId: user.id,
+  userEmail: user.email,
+  error: profileError,
+}, null, 2)}
+        </pre>
+        <p className="mt-4 text-sm text-fg-dim">
+          Copia questo output e invialo a Devin.
+        </p>
+      </main>
+    );
+  }
 
   // Determina la settimana da mostrare (searchParams.week o settimana corrente).
   const params = await searchParams;
