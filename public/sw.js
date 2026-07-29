@@ -1,13 +1,15 @@
 // Service Worker minimo per PWA installabile.
 // Strategia:
-// - Navigation requests (pagine HTML): network-first, fallback cache.
+// - Navigation requests (pagine HTML): NETWORK-ONLY, mai cache.
+//   Le pagine sono Server Components con dati live (turni, classifica).
+//   Cachare l'HTML servirebbe dati stale al riavvio (bug: turni scomparsi).
+//   Fallback offline: shell /login statica (no dati sensibili).
 // - Asset statici (JS/CSS/font/immagini): cache-first.
 // - API Supabase: sempre network (no cache, dati live).
 
-const CACHE_VERSION = "turni-v2";
+const CACHE_VERSION = "turni-v3";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PRECACHE = [
-  "/",
   "/login",
   "/manifest.json",
   "/icon-192.png",
@@ -16,7 +18,7 @@ const PRECACHE = [
   "/favicon.ico",
 ];
 
-// Install: precache shell
+// Install: precache shell (SOLO asset statici, NON pagine con dati)
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE)).catch(() => null),
@@ -49,16 +51,15 @@ self.addEventListener("fetch", (event) => {
   // Supabase API: sempre network, mai cache
   if (url.hostname.endsWith(".supabase.co")) return;
 
-  // Navigations (HTML): network-first
+  // Navigations (HTML): NETWORK-ONLY.
+  // NON cachiamo le pagine HTML perché contengono dati live (turni, ecc.).
+  // Se il network fallisce, fallback alla shell /login statica (no dati).
+  // Questo fixa il bug "turni scomparsi al riavvio".
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(STATIC_CACHE).then((c) => c.put(req, copy)).catch(() => null);
-          return res;
-        })
-        .catch(() => caches.match(req).then((r) => r || caches.match("/"))),
+      fetch(req).catch(() =>
+        caches.match("/login").then((r) => r || new Response("Offline", { status: 503 })),
+      ),
     );
     return;
   }
