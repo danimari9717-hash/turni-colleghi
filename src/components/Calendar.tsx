@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { deleteTurno } from "@/app/actions";
 import {
@@ -34,7 +34,28 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // Ref per auto-scroll al giorno corrente (solo vista mobile).
+  const todayRef = useRef<HTMLDivElement>(null);
+
   const days = weekDays(mondayIso);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIsInWeek = days.includes(todayIso);
+
+  // Auto-scroll fluido al giorno corrente all'apertura, quando si torna
+  // al calendario da un'altra pagina, o quando si cambia settimana e
+  // il giorno corrente è visibile. Solo su mobile (la vista desktop è
+  // una griglia senza scroll verticale per giorno).
+  useEffect(() => {
+    if (!todayIsInWeek) return;
+    // Lascia renderizzare il DOM prima di scrollare.
+    const raf = requestAnimationFrame(() => {
+      todayRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [todayIsInWeek, mondayIso]);
 
   // Mappa turni per accesso rapido: key = `${date}|${slot}`
   const turniMap = new Map<string, TurnoWithMember[]>();
@@ -54,7 +75,6 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
   nextWeek.setUTCDate(nextWeek.getUTCDate() + 7);
   const prevIso = prevWeek.toISOString().slice(0, 10);
   const nextIso = nextWeek.toISOString().slice(0, 10);
-  const todayIso = new Date().toISOString().slice(0, 10);
 
   const firstLabel = formatDayLabel(days[0]);
   const lastLabel = formatDayLabel(days[6]);
@@ -309,7 +329,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
       </div>
 
       {/* ============ VISTA MOBILE (<640px): lista verticale di giorni ============ */}
-      <div className="space-y-3 sm:hidden">
+      <div className="space-y-5 sm:hidden">
         {days.map((iso) => {
           const label = formatDayLabel(iso);
           const today = isToday(iso);
@@ -323,9 +343,14 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
           return (
             <div
               key={iso}
-              className={`panel-no-blur overflow-hidden ${
-                today ? "today-card" : ""
-              }`}
+              ref={today ? todayRef : undefined}
+              className={`${
+                today
+                  ? "today-card panel-no-blur"
+                  : dayHasTurni
+                    ? "day-card-active"
+                    : "panel-no-blur"
+              } overflow-hidden`}
             >
               {/* Header giorno */}
               <div
@@ -348,8 +373,17 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
                   >
                     {label.day}
                   </span>
+                  {today && (
+                    <span className="rounded-md bg-accent/20 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-accent">
+                      Oggi
+                    </span>
+                  )}
                 </div>
-                <span className="font-mono text-[11px] text-fg-dim">
+                <span
+                  className={`font-mono text-[11px] ${
+                    dayHasTurni ? "text-accent" : "text-fg-dim"
+                  }`}
+                >
                   {dayHasTurni ? `${dayTurni.reduce((n, d) => n + d.turni.length, 0)} turni` : "vuoto"}
                 </span>
               </div>
