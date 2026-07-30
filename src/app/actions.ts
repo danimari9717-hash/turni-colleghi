@@ -103,6 +103,7 @@ export async function updateTurno(
   }
 
   revalidatePath("/");
+  revalidatePath("/classifica");
   return { success: true };
 }
 

@@ -4,6 +4,10 @@ import Header from "@/components/Header";
 import UsersList from "./UsersList";
 import type { Profile } from "@/types/database";
 
+// Forza rendering dinamico: ruoli utenti possono cambiare in qualsiasi momento.
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 export default async function UtentiPage() {
   const supabase = await createClient();
   const {

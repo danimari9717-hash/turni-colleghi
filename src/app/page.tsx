@@ -5,6 +5,12 @@ import Calendar from "@/components/Calendar";
 import { mondayOfWeek } from "@/lib/shifts";
 import type { Profile, TeamMember, TurnoWithMember } from "@/types/database";
 
+// Forza rendering dinamico ad ogni richiesta + no-store su tutte le fetch.
+// Critico per dati multi-utente: senza questo, Next.js può cacheare la pagina
+// e servire dati stale quando un altro utente scrive (es. note su turno).
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 export default async function Home({
   searchParams,
 }: {

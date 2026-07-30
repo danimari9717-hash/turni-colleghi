@@ -11,6 +11,11 @@ import type {
   TeamMember,
 } from "@/types/database";
 
+// Forza rendering dinamico: dati classifica cambiano quando altri utenti
+// completano obiettivi. Senza questo, la pagina potrebbe servire dati stale.
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 export default async function ClassificaPage() {
   const supabase = await createClient();
   const {

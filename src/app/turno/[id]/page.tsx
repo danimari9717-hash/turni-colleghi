@@ -13,6 +13,11 @@ import type {
   ObiettivoCompletatoWithObiettivo,
 } from "@/types/database";
 
+// Forza rendering dinamico: note e obiettivi dei turni cambiano quando
+// altri utenti scrivono. Senza questo, la pagina potrebbe servire dati stale.
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 export default async function TurnoPage({
   params,
 }: {
