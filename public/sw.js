@@ -7,7 +7,7 @@
 // - Asset statici (JS/CSS/font/immagini): cache-first.
 // - API Supabase: sempre network (no cache, dati live).
 
-const CACHE_VERSION = "turni-v3";
+const CACHE_VERSION = "turni-v4";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PRECACHE = [
   "/login",
@@ -24,6 +24,15 @@ self.addEventListener("install", (event) => {
     caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE)).catch(() => null),
   );
   self.skipWaiting();
+});
+
+// Message: permette al client di forzare l'attivazione immediata
+// del nuovo SW (SKIP_WAITING) senza aspettare che tutti i tab vengano chiusi.
+// Critico per iOS PWA dove i tab restano aperti a lungo.
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 // Activate: pulisci cache vecchie
