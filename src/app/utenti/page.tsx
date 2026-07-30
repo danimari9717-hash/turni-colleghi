@@ -12,12 +12,23 @@ export default async function UtentiPage() {
 
   if (!user) redirect("/login");
 
-  // Profilo proprio
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, nome, email, role")
-    .eq("id", user.id)
-    .single<Pick<Profile, "id" | "nome" | "email" | "role">>();
+  // Query parallele: profile e all-users sono indipendenti.
+  // Se l'utente non è admin, la RLS profiles_select_admin restituisce 0 righe.
+  const [profileResult, usersResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, nome, email, role")
+      .eq("id", user.id)
+      .single<Pick<Profile, "id" | "nome" | "email" | "role">>(),
+    supabase
+      .from("profiles")
+      .select("id, nome, email, role")
+      .order("nome", { ascending: true })
+      .returns<Pick<Profile, "id" | "nome" | "email" | "role">[]>(),
+  ]);
+
+  const profile = profileResult.data;
+  const users = usersResult.data;
 
   // Blocco accesso: solo admin. Anche se un utente non-admin
   // tentasse di accedere direttamente a /utenti, la RLS
@@ -26,13 +37,6 @@ export default async function UtentiPage() {
   if (profile?.role !== "admin") {
     redirect("/");
   }
-
-  // Tutti i profili (policy profiles_select_admin permette SELECT * da admin)
-  const { data: users } = await supabase
-    .from("profiles")
-    .select("id, nome, email, role")
-    .order("nome", { ascending: true })
-    .returns<Pick<Profile, "id" | "nome" | "email" | "role">[]>();
 
   return (
     <>

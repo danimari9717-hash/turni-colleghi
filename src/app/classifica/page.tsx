@@ -19,39 +19,47 @@ export default async function ClassificaPage() {
 
   if (!user) redirect("/login");
 
-  // Profilo proprio
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, nome, email, role")
-    .eq("id", user.id)
-    .single<Pick<Profile, "id" | "nome" | "email" | "role">>();
+  // Query parallele: profile, members, completati, obiettivi, adjustments
+  // sono tutti indipendenti tra loro. Prima erano sequenziali (5 round-trip);
+  // ora 1 solo round-trip logico.
+  const [
+    profileResult,
+    membersResult,
+    completatiResult,
+    obiettiviResult,
+    adjustmentsResult,
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, nome, email, role")
+      .eq("id", user.id)
+      .single<Pick<Profile, "id" | "nome" | "email" | "role">>(),
+    supabase
+      .from("team_members")
+      .select("id, nome, role")
+      .order("nome", { ascending: true })
+      .returns<TeamMember[]>(),
+    supabase
+      .from("obiettivi_completati")
+      .select("id, obiettivo_id, user_id, turno_id, data_completamento, note")
+      .returns<ObiettivoCompletatoWithObiettivo[]>(),
+    supabase
+      .from("obiettivi")
+      .select("id, titolo, tipo, valore_ricompensa, valuta, soglia_gruppo, created_at")
+      .returns<Obiettivo[]>(),
+    supabase
+      .from("punti_adjustments")
+      .select("id, user_id, delta_fuoco, delta_diamanti, note, created_by, created_at")
+      .returns<PuntiAdjustment[]>(),
+  ]);
+
+  const profile = profileResult.data;
+  const members = membersResult.data;
+  const completati = completatiResult.data;
+  const obiettivi = obiettiviResult.data;
+  const adjustments = adjustmentsResult.data;
 
   const isAdmin = profile?.role === "admin";
-
-  // Tutti i membri del team
-  const { data: members } = await supabase
-    .from("team_members")
-    .select("id, nome, role")
-    .order("nome", { ascending: true })
-    .returns<TeamMember[]>();
-
-  // Tutti i completamenti
-  const { data: completati } = await supabase
-    .from("obiettivi_completati")
-    .select("id, obiettivo_id, user_id, turno_id, data_completamento, note")
-    .returns<ObiettivoCompletatoWithObiettivo[]>();
-
-  // Tutti gli obiettivi
-  const { data: obiettivi } = await supabase
-    .from("obiettivi")
-    .select("id, titolo, tipo, valore_ricompensa, valuta, soglia_gruppo, created_at")
-    .returns<Obiettivo[]>();
-
-  // Tutti gli adjustment manuali (per totali + UI admin)
-  const { data: adjustments } = await supabase
-    .from("punti_adjustments")
-    .select("id, user_id, delta_fuoco, delta_diamanti, note, created_by, created_at")
-    .returns<PuntiAdjustment[]>();
 
   // Mappa obiettivo -> {valuta, valore}
   const objMap = new Map(

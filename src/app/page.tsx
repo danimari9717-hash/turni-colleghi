@@ -20,15 +20,6 @@ export default async function Home({
     redirect("/login");
   }
 
-  // Legge il proprio profilo (policy profiles_select_self).
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, nome, email, role")
-    .eq("id", user.id)
-    .single<Pick<Profile, "id" | "nome" | "email" | "role">>();
-
-  const isAdmin = profile?.role === "admin";
-
   // Determina la settimana da mostrare (searchParams.week o settimana corrente).
   const params = await searchParams;
   const weekParam = params.week;
@@ -47,22 +38,34 @@ export default async function Home({
   const startDay = days[0];
   const endDay = days[6];
 
-  // Fetch turni della settimana (policy turni_select_all: tutti gli autenticati).
-  const { data: turni } = await supabase
-    .from("turni")
-    .select("id, user_id, data, ora_inizio, ora_fine, note, created_by, created_at, updated_at")
-    .gte("data", startDay)
-    .lte("data", endDay)
-    .order("data", { ascending: true })
-    .order("ora_inizio", { ascending: true })
-    .returns<TurnoWithMember[]>();
+  // Query parallele: profile, turni, e members sono indipendenti tra loro.
+  // Prima erano sequenziali (3 round-trip); ora 1 solo round-trip logico.
+  const [profileResult, turniResult, membersResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, nome, email, role")
+      .eq("id", user.id)
+      .single<Pick<Profile, "id" | "nome" | "email" | "role">>(),
+    supabase
+      .from("turni")
+      .select("id, user_id, data, ora_inizio, ora_fine, note, created_by, created_at, updated_at")
+      .gte("data", startDay)
+      .lte("data", endDay)
+      .order("data", { ascending: true })
+      .order("ora_inizio", { ascending: true })
+      .returns<TurnoWithMember[]>(),
+    supabase
+      .from("team_members")
+      .select("id, nome, role")
+      .order("nome", { ascending: true })
+      .returns<TeamMember[]>(),
+  ]);
 
-  // Fetch membri team (vista team_members: nome/role di tutti).
-  const { data: members } = await supabase
-    .from("team_members")
-    .select("id, nome, role")
-    .order("nome", { ascending: true })
-    .returns<TeamMember[]>();
+  const profile = profileResult.data;
+  const turni = turniResult.data;
+  const members = membersResult.data;
+
+  const isAdmin = profile?.role === "admin";
 
   // Arricchisce i turni con il nome del collega (lookup lato server).
   const memberMap = new Map((members ?? []).map((m) => [m.id, m.nome]));

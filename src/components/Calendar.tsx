@@ -93,8 +93,8 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
             aria-label="Settimana precedente"
             style={{
               background: "rgba(255, 255, 255, 0.07)",
-              backdropFilter: "blur(20px)",
-              WebkitBackdropFilter: "blur(20px)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
               border: "1px solid rgba(255, 255, 255, 0.25)",
               borderRadius: "12px",
               color: "var(--color-fg)",
@@ -110,8 +110,8 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
             className="px-4 py-2 text-sm font-medium"
             style={{
               background: "rgba(255, 255, 255, 0.07)",
-              backdropFilter: "blur(20px)",
-              WebkitBackdropFilter: "blur(20px)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
               border: "1px solid rgba(255, 255, 255, 0.25)",
               borderRadius: "12px",
               color: "var(--color-fg)",
@@ -128,8 +128,8 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
             aria-label="Settimana successiva"
             style={{
               background: "rgba(255, 255, 255, 0.07)",
-              backdropFilter: "blur(20px)",
-              WebkitBackdropFilter: "blur(20px)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
               border: "1px solid rgba(255, 255, 255, 0.25)",
               borderRadius: "12px",
               color: "var(--color-fg)",
@@ -323,7 +323,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
           return (
             <div
               key={iso}
-              className={`panel overflow-hidden ${
+              className={`panel-no-blur overflow-hidden ${
                 today ? "today-card" : ""
               }`}
             >
@@ -500,19 +500,12 @@ function TurnoCard({ turno, shift, isAdmin, deleting, onEdit, onDelete }: TurnoC
     <div
       className="max-w-full px-3 py-2 animate-fade-in"
       style={{
-        // Valori esatti richiesti:
-        // Sfondo: rgba(46, 125, 50, 0.18) — verde opacità 18%
-        // Blur: backdrop-filter blur(20px) — sfoca il contenuto dietro (cella colorata del calendario)
-        // Bordo: 1.5px rgba(111, 227, 165, 0.5) — verde chiaro opacità 50%
-        // Border-radius: 20px
-        // In CSS il backdrop-filter è automaticamente ritagliato al border-radius
-        // (equivalente di ClipRRect + BackdropFilter in Flutter non necessario)
-        background: "rgba(46, 125, 50, 0.18)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
+        // Glass senza backdrop-filter (troppi elementi simultanei = scroll a scatti su mobile).
+        // L'estetica glass è mantenuta da: sfondo traslucido + bordo luminoso + inner shadow.
+        background: "rgba(46, 125, 50, 0.22)",
         border: "1.5px solid rgba(111, 227, 165, 0.5)",
         borderRadius: "20px",
-        boxShadow: "0 2px 14px rgba(0, 0, 0, 0.22)",
+        boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 2px 14px rgba(0, 0, 0, 0.22)",
       }}
     >
       <div className="flex items-center justify-between gap-1">

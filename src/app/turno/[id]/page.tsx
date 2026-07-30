@@ -26,23 +26,41 @@ export default async function TurnoPage({
 
   if (!user) redirect("/login");
 
-  // Profilo proprio
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, nome, email, role")
-    .eq("id", user.id)
-    .single<Pick<Profile, "id" | "nome" | "email" | "role">>();
+  // Query parallele: profile, turno, obiettivi, e completati sono indipendenti.
+  // (member dipende da turnoRow, ma è una query leggera fatta dopo).
+  const [profileResult, turnoResult, obiettiviResult, completatiResult] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, nome, email, role")
+        .eq("id", user.id)
+        .single<Pick<Profile, "id" | "nome" | "email" | "role">>(),
+      supabase
+        .from("turni")
+        .select("id, user_id, data, ora_inizio, ora_fine, note, created_by, created_at, updated_at")
+        .eq("id", id)
+        .single<TurnoWithMember>(),
+      supabase
+        .from("obiettivi")
+        .select("id, titolo, tipo, valore_ricompensa, valuta, soglia_gruppo, created_at")
+        .order("valore_ricompensa", { ascending: true })
+        .returns<Obiettivo[]>(),
+      supabase
+        .from("obiettivi_completati")
+        .select("id, obiettivo_id, user_id, turno_id, data_completamento, note")
+        .eq("turno_id", id)
+        .order("data_completamento", { ascending: false })
+        .returns<ObiettivoCompletatoWithObiettivo[]>(),
+    ]);
 
-  // Turno (con nome del collega assegnato)
-  const { data: turnoRow } = await supabase
-    .from("turni")
-    .select("id, user_id, data, ora_inizio, ora_fine, note, created_by, created_at, updated_at")
-    .eq("id", id)
-    .single<TurnoWithMember>();
+  const profile = profileResult.data;
+  const turnoRow = turnoResult.data;
+  const obiettivi = obiettiviResult.data;
+  const completati = completatiResult.data;
 
   if (!turnoRow) notFound();
 
-  // Nome del collega assegnato (lookup team_members)
+  // Nome del collega assegnato (lookup team_members) — query leggera dipendente da turnoRow
   const { data: member } = await supabase
     .from("team_members")
     .select("id, nome, role")
@@ -50,21 +68,6 @@ export default async function TurnoPage({
     .single<TeamMember>();
 
   const turno: TurnoWithMember = { ...turnoRow, member_nome: member?.nome };
-
-  // Tutti gli obiettivi predefiniti
-  const { data: obiettivi } = await supabase
-    .from("obiettivi")
-    .select("id, titolo, tipo, valore_ricompensa, valuta, soglia_gruppo, created_at")
-    .order("valore_ricompensa", { ascending: true })
-    .returns<Obiettivo[]>();
-
-  // Obiettivi completati per questo turno (tutti gli utenti, per monitoraggio)
-  const { data: completati } = await supabase
-    .from("obiettivi_completati")
-    .select("id, obiettivo_id, user_id, turno_id, data_completamento, note")
-    .eq("turno_id", id)
-    .order("data_completamento", { ascending: false })
-    .returns<ObiettivoCompletatoWithObiettivo[]>();
 
   // Arricchisci completati con i dati dell'obiettivo
   const objMap = new Map((obiettivi ?? []).map((o) => [o.id, o]));
