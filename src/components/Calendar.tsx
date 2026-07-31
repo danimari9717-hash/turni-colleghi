@@ -67,6 +67,48 @@ type ModalState =
 type ViewMode = "lista" | "mese";
 
 // ============================================================================
+//  useTap: handler tap che distingue tap netto da scroll/swipe.
+//  Traccia la posizione del touchstart; se il dito si sposta più di
+//  TAP_THRESHOLD px prima del touchend, l'evento è considerato scroll
+//  e il tap viene ignorato. Funziona sia con touch che con mouse.
+// ============================================================================
+const TAP_THRESHOLD = 10; // px di movimento massimo per considerarlo tap
+
+function useTapHandler(onTap: () => void) {
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+  const movedRef = useRef(false);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    startRef.current = { x: t.clientX, y: t.clientY };
+    movedRef.current = false;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!startRef.current) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startRef.current.x;
+    const dy = t.clientY - startRef.current.y;
+    if (Math.hypot(dx, dy) > TAP_THRESHOLD) {
+      movedRef.current = true;
+    }
+  };
+
+  const onClick = (e: React.MouseEvent) => {
+    // Su desktop il click è sempre valido (no swipe). Su mobile il
+    // click sintetico arriva dopo touchend; se movedRef è true, ignora.
+    if (movedRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    onTap();
+  };
+
+  return { onTouchStart, onTouchMove, onClick };
+}
+
+// ============================================================================
 //  Componente principale
 // ============================================================================
 export default function Calendar({
@@ -523,7 +565,6 @@ function MonthView({
   const grid = useMemo(() => monthGrid(mondayIso), [mondayIso]);
   const todayIso = new Date().toISOString().slice(0, 10);
   const weekdays = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
-
   return (
     <>
       {/* Toggle "Solo i miei turni" */}
@@ -579,74 +620,115 @@ function MonthView({
           const dimmed = onlyMine && !hasMine;
 
           return (
-            <button
-              type="button"
+            <MonthDayCell
               key={iso}
-              onClick={() => onSelectDay(iso)}
-              className="relative flex min-h-[64px] flex-col rounded-lg border p-1.5 text-left transition-all active:scale-95"
-              style={{
-                background: today
-                  ? "linear-gradient(180deg, rgba(0, 229, 255, 0.18) 0%, rgba(0, 229, 255, 0.06) 100%)"
-                  : dayTurni.length > 0
-                    ? "var(--color-surface-active)"
-                    : "rgba(255, 255, 255, 0.03)",
-                borderColor: today
-                  ? "rgba(0, 229, 255, 0.55)"
-                  : hasMine
-                    ? "rgba(0, 255, 163, 0.5)"
-                    : "rgba(255, 255, 255, 0.1)",
-                boxShadow: today
-                  ? "0 0 16px rgba(0, 229, 255, 0.2)"
-                  : hasMine
-                    ? "0 0 12px rgba(0, 255, 163, 0.18)"
-                    : "none",
-                opacity: dimmed ? 0.3 : 1,
-                filter: dimmed ? "grayscale(0.6)" : "none",
-                cursor: "pointer",
-              }}
-            >
-              {/* Numero giorno */}
-              <div className="flex items-center justify-between">
-                <span
-                  className={`font-mono text-xs font-semibold ${
-                    today ? "text-white" : "text-fg"
-                  }`}
-                >
-                  {iso.slice(8)}
-                </span>
-                {today && (
-                  <span className="rounded bg-accent/20 px-1 font-mono text-[8px] font-bold uppercase text-accent">
-                    Oggi
-                  </span>
-                )}
-              </div>
-
-              {/* Pallini persona */}
-              <div className="mt-1 flex flex-wrap gap-0.5">
-                {dayTurni.slice(0, 6).map((t) => (
-                  <span
-                    key={t.id}
-                    className="h-2 w-2 rounded-full"
-                    style={{
-                      background: personColor(t.user_id),
-                      boxShadow: t.user_id === currentUserId
-                        ? `0 0 6px ${personColor(t.user_id)}`
-                        : "none",
-                      outline: t.user_id === currentUserId
-                        ? `1px solid ${personColor(t.user_id)}`
-                        : "none",
-                    }}
-                  />
-                ))}
-                {dayTurni.length > 6 && (
-                  <span className="font-mono text-[8px] text-fg-dim">+{dayTurni.length - 6}</span>
-                )}
-              </div>
-            </button>
+              iso={iso}
+              today={today}
+              hasMine={hasMine}
+              dayTurni={dayTurni}
+              dimmed={dimmed}
+              currentUserId={currentUserId}
+              onSelectDay={onSelectDay}
+            />
           );
         })}
       </div>
     </>
+  );
+}
+
+// ============================================================================
+//  MonthDayCell: singola cella-giorno della Vista Mese.
+//  Usa useTapHandler per distinguere tap netto da scroll/swipe.
+// ============================================================================
+function MonthDayCell({
+  iso,
+  today,
+  hasMine,
+  dayTurni,
+  dimmed,
+  currentUserId,
+  onSelectDay,
+}: {
+  iso: string;
+  today: boolean;
+  hasMine: boolean;
+  dayTurni: TurnoWithMember[];
+  dimmed: boolean;
+  currentUserId: string;
+  onSelectDay: (iso: string) => void;
+}) {
+  const tap = useTapHandler(() => onSelectDay(iso));
+
+  return (
+    <button
+      type="button"
+      onTouchStart={tap.onTouchStart}
+      onTouchMove={tap.onTouchMove}
+      onClick={tap.onClick}
+      className="relative flex min-h-[64px] flex-col rounded-lg border p-1.5 text-left transition-all active:scale-95"
+      style={{
+        background: today
+          ? "linear-gradient(180deg, rgba(0, 229, 255, 0.18) 0%, rgba(0, 229, 255, 0.06) 100%)"
+          : dayTurni.length > 0
+            ? "var(--color-surface-active)"
+            : "rgba(255, 255, 255, 0.03)",
+        borderColor: today
+          ? "rgba(0, 229, 255, 0.55)"
+          : hasMine
+            ? "rgba(0, 255, 163, 0.5)"
+            : "rgba(255, 255, 255, 0.1)",
+        boxShadow: today
+          ? "0 0 16px rgba(0, 229, 255, 0.2)"
+          : hasMine
+            ? "0 0 12px rgba(0, 255, 163, 0.18)"
+            : "none",
+        opacity: dimmed ? 0.3 : 1,
+        filter: dimmed ? "grayscale(0.6)" : "none",
+        cursor: "pointer",
+        // touch-action: pan-y permette lo scroll verticale nativo del
+        // browser senza che il browser attenda il nostro handler custom.
+        touchAction: "pan-y",
+      }}
+    >
+      {/* Numero giorno */}
+      <div className="flex items-center justify-between">
+        <span
+          className={`font-mono text-xs font-semibold ${
+            today ? "text-white" : "text-fg"
+          }`}
+        >
+          {iso.slice(8)}
+        </span>
+        {today && (
+          <span className="rounded bg-accent/20 px-1 font-mono text-[8px] font-bold uppercase text-accent">
+            Oggi
+          </span>
+        )}
+      </div>
+
+      {/* Pallini persona */}
+      <div className="mt-1 flex flex-wrap gap-0.5">
+        {dayTurni.slice(0, 6).map((t) => (
+          <span
+            key={t.id}
+            className="h-2 w-2 rounded-full"
+            style={{
+              background: personColor(t.user_id),
+              boxShadow: t.user_id === currentUserId
+                ? `0 0 6px ${personColor(t.user_id)}`
+                : "none",
+              outline: t.user_id === currentUserId
+                ? `1px solid ${personColor(t.user_id)}`
+                : "none",
+            }}
+          />
+        ))}
+        {dayTurni.length > 6 && (
+          <span className="font-mono text-[8px] text-fg-dim">+{dayTurni.length - 6}</span>
+        )}
+      </div>
+    </button>
   );
 }
 
