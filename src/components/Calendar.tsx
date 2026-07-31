@@ -777,11 +777,29 @@ function MonthDayCell({
       </div>
 
       {/* Avatar iniziali colorate (stile Google Calendar) */}
-      {/* Deduplica per user_id: una persona può avere più turni lo stesso giorno */}
+      {/* Ordine fisso: Mattina → Pomeriggio → Notte (da sinistra a destra).
+          Deduplica per user_id: una persona può avere più turni lo stesso
+          giorno; viene mostrata nella posizione del suo primo turno secondo
+          l'ordine delle fasce. */}
       <div className="mt-1 flex items-center">
         {(() => {
+          // Ordina per fascia (Mattina < Pomeriggio < Notte), poi per ora.
+          const slotOrder: Record<string, number> = {
+            morning: 0,
+            afternoon: 1,
+            night: 2,
+          };
+          const sorted = [...dayTurni].sort((a, b) => {
+            const sa = slotFromStart(a.ora_inizio.slice(0, 5));
+            const sb = slotFromStart(b.ora_inizio.slice(0, 5));
+            const oa = sa !== null ? slotOrder[sa] : 99;
+            const ob = sb !== null ? slotOrder[sb] : 99;
+            if (oa !== ob) return oa - ob;
+            return a.ora_inizio.localeCompare(b.ora_inizio);
+          });
+          // Deduplica per user_id mantenendo il primo (in ordine fascia).
           const seen = new Set<string>();
-          const unique = dayTurni.filter((t) => {
+          const unique = sorted.filter((t) => {
             if (seen.has(t.user_id)) return false;
             seen.add(t.user_id);
             return true;
