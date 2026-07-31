@@ -202,7 +202,8 @@ export interface PersonColorEntry {
 // Mappa nome → colore, centralizzata e definitiva.
 // I nomi sono lowercased per match case-insensitive.
 const PERSON_COLOR_MAP: Record<string, PersonColorEntry> = {
-  enrica: { color: "#F472B6", textColor: "#ffffff", label: "Enrica" },      // rosa
+  enri: { color: "#F472B6", textColor: "#ffffff", label: "Enrica" },        // rosa
+  enrica: { color: "#F472B6", textColor: "#ffffff", label: "Enrica" },      // rosa (alias)
   daniele: { color: "#FACC15", textColor: "#1a1a2e", label: "Daniele" },    // giallo (più vivo del Mattino #FFD24A)
   fabrizio: { color: "#3B82F6", textColor: "#ffffff", label: "Fabrizio" },  // blu
   daniluzzu: { color: "#FF6B4A", textColor: "#ffffff", label: "Daniluzzu" },// arancio (più rosso del Pomeriggio #FF7D52)
@@ -218,24 +219,29 @@ const PERSON_COLORS_FALLBACK = [
 ];
 
 // Restituisce il colore di sfondo per una persona (per nome o user_id).
+// Tenta match su: nome completo lowercased, poi primo nome (prima parola).
 export function personColor(nome: string): string {
-  const key = nome.toLowerCase().trim();
-  if (PERSON_COLOR_MAP[key]) return PERSON_COLOR_MAP[key].color;
-  // Fallback hash-based su user_id (presuppone che nome sia un user_id)
+  return personColorEntry(nome).color;
+}
+
+// Restituisce l'entry completa (color + textColor) per una persona.
+// Tenta match su: nome completo lowercased, poi primo nome (prima parola).
+// Questo gestisce il caso in cui il DB contiene "Enrica Rossi" ma la
+// mappa ha solo "enrica".
+export function personColorEntry(nome: string): PersonColorEntry {
+  const full = nome.toLowerCase().trim();
+  // 1. Match su nome completo
+  if (PERSON_COLOR_MAP[full]) return PERSON_COLOR_MAP[full];
+  // 2. Match su primo nome (prima parola)
+  const firstWord = full.split(/\s+/)[0];
+  if (firstWord && PERSON_COLOR_MAP[firstWord]) return PERSON_COLOR_MAP[firstWord];
+  // 3. Fallback: testo bianco su colore hash
   let hash = 0;
   for (let i = 0; i < nome.length; i++) {
     hash = (hash * 31 + nome.charCodeAt(i)) | 0;
   }
-  return PERSON_COLORS_FALLBACK[Math.abs(hash) % PERSON_COLORS_FALLBACK.length];
-}
-
-// Restituisce l'entry completa (color + textColor) per una persona.
-export function personColorEntry(nome: string): PersonColorEntry {
-  const key = nome.toLowerCase().trim();
-  if (PERSON_COLOR_MAP[key]) return PERSON_COLOR_MAP[key];
-  // Fallback: testo bianco su colore hash
   return {
-    color: personColor(nome),
+    color: PERSON_COLORS_FALLBACK[Math.abs(hash) % PERSON_COLORS_FALLBACK.length],
     textColor: "#ffffff",
     label: nome,
   };
