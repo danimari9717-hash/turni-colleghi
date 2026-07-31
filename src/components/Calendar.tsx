@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { deleteTurno } from "@/app/actions";
 import {
@@ -10,17 +10,51 @@ import {
   formatDayLabel,
   isToday,
   slotFromStart,
+  monthGrid,
+  monthRange,
+  personColor,
   type ShiftSlot,
   type ShiftDefinition,
 } from "@/lib/shifts";
+import { VALUTE } from "@/lib/objectives";
 import type { TeamMember, TurnoWithMember } from "@/types/database";
 import ShiftForm from "./ShiftForm";
 
+// ============================================================================
+//  Tipi per le statistiche del carosello
+// ============================================================================
+interface PodioEntry {
+  user_id: string;
+  nome: string;
+  totale_fuoco: number;
+  totale_diamanti: number;
+}
+
+interface NextTurnoInfo {
+  data: string;
+  oraInizio: string;
+  oraFine: string;
+  memberNome: string;
+}
+
+interface StatsData {
+  myMonthHours: number;
+  myMonthTurniCount: number;
+  podio: PodioEntry[];
+  nextTurno: NextTurnoInfo | null;
+}
+
+// ============================================================================
+//  Props del Calendar
+// ============================================================================
 interface CalendarProps {
-  turni: TurnoWithMember[];
+  turni: TurnoWithMember[]; // turni della settimana (vista Lista)
+  monthTurni: TurnoWithMember[]; // turni del mese intero (vista Mese + carosello)
   members: TeamMember[];
   isAdmin: boolean;
   mondayIso: string;
+  currentUserId: string;
+  stats: StatsData;
 }
 
 type ModalState =
@@ -29,25 +63,37 @@ type ModalState =
   | { kind: "create-blank" }
   | { kind: "edit"; turno: TurnoWithMember };
 
-export default function Calendar({ turni, members, isAdmin, mondayIso }: CalendarProps) {
+type ViewMode = "lista" | "mese";
+
+// ============================================================================
+//  Componente principale
+// ============================================================================
+export default function Calendar({
+  turni,
+  monthTurni,
+  members,
+  isAdmin,
+  mondayIso,
+  currentUserId,
+  stats,
+}: CalendarProps) {
   const [modal, setModal] = useState<ModalState>({ kind: "closed" });
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("lista");
+  const [onlyMine, setOnlyMine] = useState(false);
 
-  // Ref per auto-scroll al giorno corrente (solo vista mobile).
+  // Ref per auto-scroll al giorno corrente (solo vista Lista mobile).
   const todayRef = useRef<HTMLDivElement>(null);
 
   const days = weekDays(mondayIso);
   const todayIso = new Date().toISOString().slice(0, 10);
   const todayIsInWeek = days.includes(todayIso);
 
-  // Auto-scroll fluido al giorno corrente all'apertura, quando si torna
-  // al calendario da un'altra pagina, o quando si cambia settimana e
-  // il giorno corrente è visibile. Solo su mobile (la vista desktop è
-  // una griglia senza scroll verticale per giorno).
+  // Auto-scroll fluido al giorno corrente (solo vista Lista).
   useEffect(() => {
+    if (viewMode !== "lista") return;
     if (!todayIsInWeek) return;
-    // Lascia renderizzare il DOM prima di scrollare.
     const raf = requestAnimationFrame(() => {
       todayRef.current?.scrollIntoView({
         behavior: "smooth",
@@ -55,18 +101,32 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
       });
     });
     return () => cancelAnimationFrame(raf);
-  }, [todayIsInWeek, mondayIso]);
+  }, [todayIsInWeek, mondayIso, viewMode]);
 
-  // Mappa turni per accesso rapido: key = `${date}|${slot}`
-  const turniMap = new Map<string, TurnoWithMember[]>();
-  for (const t of turni) {
-    const slot = slotFromStart(t.ora_inizio.slice(0, 5));
-    if (!slot) continue;
-    const key = `${t.data}|${slot}`;
-    const arr = turniMap.get(key) ?? [];
-    arr.push(t);
-    turniMap.set(key, arr);
-  }
+  // Mappa turni settimana per accesso rapido: key = `${date}|${slot}`
+  const turniMap = useMemo(() => {
+    const map = new Map<string, TurnoWithMember[]>();
+    for (const t of turni) {
+      const slot = slotFromStart(t.ora_inizio.slice(0, 5));
+      if (!slot) continue;
+      const key = `${t.data}|${slot}`;
+      const arr = map.get(key) ?? [];
+      arr.push(t);
+      map.set(key, arr);
+    }
+    return map;
+  }, [turni]);
+
+  // Mappa turni mese per giorno: key = date ISO
+  const monthTurniByDay = useMemo(() => {
+    const map = new Map<string, TurnoWithMember[]>();
+    for (const t of monthTurni) {
+      const arr = map.get(t.data) ?? [];
+      arr.push(t);
+      map.set(t.data, arr);
+    }
+    return map;
+  }, [monthTurni]);
 
   // Navigazione settimana
   const prevWeek = new Date(mondayIso + "T00:00:00Z");
@@ -78,6 +138,12 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
 
   const firstLabel = formatDayLabel(days[0]);
   const lastLabel = formatDayLabel(days[6]);
+  const mRange = monthRange(mondayIso);
+  const monthName = new Date(Date.UTC(mRange.year, mRange.month, 1)).toLocaleDateString("it-IT", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 
   async function handleDelete(turnoId: string) {
     if (!confirm("Eliminare questo turno?")) return;
@@ -95,72 +161,87 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
   const openCreate = (date: string, slot: ShiftSlot) => setModal({ kind: "create", date, slot });
   const openEdit = (turno: TurnoWithMember) => setModal({ kind: "edit", turno });
 
+  // Stile inline per pulsanti nav (riusato)
+  const navBtnStyle: React.CSSProperties = {
+    background: "rgba(255, 255, 255, 0.07)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
+    border: "1px solid rgba(255, 255, 255, 0.25)",
+    borderRadius: "12px",
+    color: "var(--color-fg)",
+    display: "inline-flex",
+    alignItems: "center",
+    textDecoration: "none",
+  };
+
   return (
     <>
-      {/* Header calendario: navigazione settimana */}
+      {/* ============ CAROSELLO STATISTICHE ============ */}
+      <StatsCarousel stats={stats} currentUserId={currentUserId} />
+
+      {/* ============ TOGGLE LISTA / MESE ============ */}
+      <div className="mb-4 flex items-center justify-center">
+        <div
+          className="inline-flex rounded-xl border border-border p-1"
+          style={{ background: "rgba(255, 255, 255, 0.04)" }}
+        >
+          <button
+            type="button"
+            onClick={() => setViewMode("lista")}
+            className="rounded-lg px-5 py-1.5 text-sm font-medium transition-all"
+            style={
+              viewMode === "lista"
+                ? {
+                    background: "linear-gradient(135deg, #00e5ff 0%, #00ffa3 100%)",
+                    color: "#001316",
+                    fontWeight: 700,
+                  }
+                : { color: "var(--color-fg-muted)" }
+            }
+          >
+            Lista
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("mese")}
+            className="rounded-lg px-5 py-1.5 text-sm font-medium transition-all"
+            style={
+              viewMode === "mese"
+                ? {
+                    background: "linear-gradient(135deg, #00e5ff 0%, #00ffa3 100%)",
+                    color: "#001316",
+                    fontWeight: 700,
+                  }
+                : { color: "var(--color-fg-muted)" }
+            }
+          >
+            Mese
+          </button>
+        </div>
+      </div>
+
+      {/* ============ HEADER CALENDARIO: navigazione ============ */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-fg">Calendario turni</h1>
           <p className="mt-1 font-mono text-sm text-fg-muted">
-            {firstLabel.day} – {lastLabel.day}
+            {viewMode === "lista"
+              ? `${firstLabel.day} – ${lastLabel.day}`
+              : monthName}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href={`/?week=${prevIso}`}
-            className="px-3 py-2 text-sm"
-            aria-label="Settimana precedente"
-            style={{
-              background: "rgba(255, 255, 255, 0.07)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              border: "1px solid rgba(255, 255, 255, 0.25)",
-              borderRadius: "12px",
-              color: "var(--color-fg)",
-              display: "inline-flex",
-              alignItems: "center",
-              textDecoration: "none",
-            }}
-          >
+          <Link href={`/?week=${prevIso}`} className="px-3 py-2 text-sm" aria-label="Precedente" style={navBtnStyle}>
             ←
           </Link>
-          <Link
-            href={`/?week=${todayIso}`}
-            className="px-4 py-2 text-sm font-medium"
-            style={{
-              background: "rgba(255, 255, 255, 0.07)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              border: "1px solid rgba(255, 255, 255, 0.25)",
-              borderRadius: "12px",
-              color: "var(--color-fg)",
-              display: "inline-flex",
-              alignItems: "center",
-              textDecoration: "none",
-            }}
-          >
+          <Link href={`/?week=${todayIso}`} className="px-4 py-2 text-sm font-medium" style={navBtnStyle}>
             Oggi
           </Link>
-          <Link
-            href={`/?week=${nextIso}`}
-            className="px-3 py-2 text-sm"
-            aria-label="Settimana successiva"
-            style={{
-              background: "rgba(255, 255, 255, 0.07)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              border: "1px solid rgba(255, 255, 255, 0.25)",
-              borderRadius: "12px",
-              color: "var(--color-fg)",
-              display: "inline-flex",
-              alignItems: "center",
-              textDecoration: "none",
-            }}
-          >
+          <Link href={`/?week=${nextIso}`} className="px-3 py-2 text-sm" aria-label="Successivo" style={navBtnStyle}>
             →
           </Link>
-          {isAdmin && (
+          {isAdmin && viewMode === "lista" && (
             <button
               type="button"
               onClick={() => setModal({ kind: "create-blank" })}
@@ -172,304 +253,62 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
         </div>
       </div>
 
-      {/* Legenda fasce */}
-      <div className="mb-4 flex flex-wrap gap-4">
-        {SHIFT_ORDER.map((slot) => {
-          const shift = SHIFTS[slot];
-          return (
-            <div key={slot} className="flex items-center gap-2">
-              <span
-                className="h-2.5 w-2.5 rounded-sm"
-                style={{
-                  background: shift.color.accent,
-                  boxShadow: `0 0 8px ${shift.color.glow}`,
-                }}
-              />
-              <span className="font-mono text-xs text-fg-muted">
-                {shift.label} <span className="text-fg-dim">{shift.start}–{shift.end}</span>
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ============ VISTA DESKTOP (≥640px): griglia orizzontale ============ */}
-      <div className="panel hidden overflow-hidden sm:block">
-        {/* Header giorni */}
-        <div className="grid grid-cols-[100px_repeat(7,1fr)] border-b border-border bg-surface-2">
-          <div className="px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider text-fg-dim">
-            Fascia
+      {/* ============ VISTA LISTA (default) ============ */}
+      {viewMode === "lista" && (
+        <>
+          {/* Legenda fasce */}
+          <div className="mb-4 flex flex-wrap gap-4">
+            {SHIFT_ORDER.map((slot) => {
+              const shift = SHIFTS[slot];
+              return (
+                <div key={slot} className="flex items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 rounded-sm"
+                    style={{ background: shift.color.accent, boxShadow: `0 0 8px ${shift.color.glow}` }}
+                  />
+                  <span className="font-mono text-xs text-fg-muted">
+                    {shift.label} <span className="text-fg-dim">{shift.start}–{shift.end}</span>
+                  </span>
+                </div>
+              );
+            })}
           </div>
-          {days.map((iso) => {
-            const label = formatDayLabel(iso);
-            const today = isToday(iso);
-            return (
-              <div
-                key={iso}
-                className={`px-3 py-2.5 text-center border-l border-border ${
-                  today ? "today-highlight" : ""
-                }`}
-              >
-                <div
-                  className={`font-mono text-[11px] uppercase tracking-wider ${
-                    today ? "text-accent" : "text-fg-dim"
-                  }`}
-                >
-                  {label.weekday}
-                </div>
-                <div
-                  className={`font-mono text-sm font-medium ${
-                    today ? "text-white" : "text-fg"
-                  }`}
-                >
-                  {label.day}
-                </div>
-              </div>
-            );
-          })}
-        </div>
 
-        {/* Righe fasce */}
-        {SHIFT_ORDER.map((slot) => {
-          const shift = SHIFTS[slot];
-          return (
-            <div
-              key={slot}
-              className="grid grid-cols-[100px_repeat(7,1fr)] border-b border-border last:border-b-0"
-            >
-              {/* Label fascia */}
-              <div
-                className="flex flex-col justify-center px-3 py-3 border-r border-border"
-                style={{ background: shift.color.bg }}
-              >
-                <div
-                  className="font-mono text-xs font-medium uppercase tracking-wider"
-                  style={{ color: shift.color.accent }}
-                >
-                  {shift.label}
-                </div>
-                <div className="mt-0.5 font-mono text-[11px] text-fg-dim">
-                  {shift.start}–{shift.end}
-                </div>
-              </div>
+          {/* Vista Desktop (≥640px) */}
+          <WeekViewDesktop
+            days={days}
+            turniMap={turniMap}
+            isAdmin={isAdmin}
+            deletingId={deletingId}
+            onEdit={openEdit}
+            onDelete={handleDelete}
+            openCreate={openCreate}
+          />
 
-              {/* Celle giorni */}
-              {days.map((iso) => {
-                const key = `${iso}|${slot}`;
-                const cellTurni = turniMap.get(key) ?? [];
-                const hasTurni = cellTurni.length > 0;
-                const canAddMore = cellTurni.length < 2;
-                return (
-                  <div
-                    key={iso}
-                    className="group relative min-h-[80px] overflow-hidden border-l border-border p-2 transition-colors"
-                    style={{
-                      background: hasTurni ? shift.color.bg : "var(--color-base)",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (isAdmin && canAddMore) {
-                        e.currentTarget.style.background = shift.color.bgHover;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (isAdmin && canAddMore) {
-                        e.currentTarget.style.background = hasTurni ? shift.color.bg : "var(--color-base)";
-                      }
-                    }}
-                    onClick={() => {
-                      if (isAdmin && canAddMore) openCreate(iso, slot);
-                    }}
-                    role={isAdmin && canAddMore ? "button" : undefined}
-                    title={isAdmin && canAddMore ? (hasTurni ? "Aggiungi seconda persona" : "Clicca per assegnare turno") : undefined}
-                  >
-                    <div className="space-y-1.5">
-                      {cellTurni.map((t) => (
-                        <TurnoCard
-                          key={t.id}
-                          turno={t}
-                          shift={shift}
-                          isAdmin={isAdmin}
-                          deleting={deletingId === t.id}
-                          onEdit={openEdit}
-                          onDelete={handleDelete}
-                        />
-                      ))}
-                    </div>
+          {/* Vista Mobile (<640px) */}
+          <WeekViewMobile
+            days={days}
+            turniMap={turniMap}
+            isAdmin={isAdmin}
+            deletingId={deletingId}
+            onEdit={openEdit}
+            onDelete={handleDelete}
+            openCreate={openCreate}
+            todayRef={todayRef}
+          />
+        </>
+      )}
 
-                    {/* "+" per slot vuoto (overlay) o per aggiungere seconda persona (in basso) */}
-                    {isAdmin && canAddMore && !hasTurni && (
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-60 pointer-events-none">
-                        <span
-                          className="font-mono text-lg"
-                          style={{ color: shift.color.accent }}
-                        >
-                          +
-                        </span>
-                      </div>
-                    )}
-                    {isAdmin && canAddMore && hasTurni && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openCreate(iso, slot);
-                        }}
-                        className="mt-1.5 flex w-full items-center justify-center rounded-md border border-dashed py-1 text-xs opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-70"
-                        style={{ borderColor: `${shift.color.accent}40`, color: shift.color.accent }}
-                      >
-                        + seconda persona
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ============ VISTA MOBILE (<640px): lista verticale di giorni ============ */}
-      <div className="space-y-5 sm:hidden">
-        {days.map((iso) => {
-          const label = formatDayLabel(iso);
-          const today = isToday(iso);
-          const dayTurni = SHIFT_ORDER.map((slot) => ({
-            slot,
-            shift: SHIFTS[slot],
-            turni: turniMap.get(`${iso}|${slot}`) ?? [],
-          }));
-          const dayHasTurni = dayTurni.some((d) => d.turni.length > 0);
-
-          return (
-            <div
-              key={iso}
-              ref={today ? todayRef : undefined}
-              className={`${
-                today
-                  ? "today-card panel-no-blur"
-                  : dayHasTurni
-                    ? "day-card-active"
-                    : "panel-no-blur"
-              } overflow-hidden`}
-            >
-              {/* Header giorno */}
-              <div
-                className={`flex items-center justify-between px-5 py-4 border-b border-border ${
-                  today ? "today-highlight" : "bg-surface-2"
-                }`}
-              >
-                <div className="flex items-baseline gap-3">
-                  <span
-                    className={`font-mono text-xs uppercase tracking-wider ${
-                      today ? "text-accent" : "text-fg-dim"
-                    }`}
-                  >
-                    {label.weekday}
-                  </span>
-                  <span
-                    className={`font-mono text-base font-semibold ${
-                      today ? "text-white" : "text-fg"
-                    }`}
-                  >
-                    {label.day}
-                  </span>
-                  {today && (
-                    <span className="rounded-md bg-accent/20 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-accent">
-                      Oggi
-                    </span>
-                  )}
-                </div>
-                <span
-                  className={`font-mono text-[11px] ${
-                    dayHasTurni ? "text-accent" : "text-fg-dim"
-                  }`}
-                >
-                  {dayHasTurni ? `${dayTurni.reduce((n, d) => n + d.turni.length, 0)} turni` : "vuoto"}
-                </span>
-              </div>
-
-              {/* 3 fasce */}
-              <div className="divide-y divide-border">
-                {dayTurni.map(({ slot, shift, turni: cellTurni }) => {
-                  const hasTurni = cellTurni.length > 0;
-                  const canAddMore = cellTurni.length < 2;
-                  return (
-                    <div
-                      key={slot}
-                      className="group relative flex items-stretch transition-colors"
-                      style={{ background: hasTurni ? shift.color.bg : "var(--color-base)" }}
-                      onClick={() => {
-                        if (isAdmin && canAddMore && !hasTurni) openCreate(iso, slot);
-                      }}
-                      role={isAdmin && canAddMore && !hasTurni ? "button" : undefined}
-                      title={isAdmin && canAddMore && !hasTurni ? "Tocca per assegnare turno" : undefined}
-                    >
-                      {/* Label fascia (colonna sinistra) */}
-                      <div
-                        className="flex w-20 shrink-0 flex-col justify-center px-3 py-3 border-r border-border"
-                      >
-                        <div
-                          className="font-mono text-[11px] font-medium uppercase tracking-wider"
-                          style={{ color: shift.color.accent }}
-                        >
-                          {shift.label}
-                        </div>
-                        <div className="mt-0.5 font-mono text-[10px] text-fg-dim">
-                          {shift.start}–{shift.end}
-                        </div>
-                      </div>
-
-                      {/* Contenuto fasce */}
-                      <div className="min-w-0 flex-1 p-2">
-                        {cellTurni.length > 0 ? (
-                          <div className="space-y-1.5">
-                            {cellTurni.map((t) => (
-                              <TurnoCard
-                                key={t.id}
-                                turno={t}
-                                shift={shift}
-                                isAdmin={isAdmin}
-                                deleting={deletingId === t.id}
-                                onEdit={openEdit}
-                                onDelete={handleDelete}
-                              />
-                            ))}
-                            {/* Pulsante "+" per aggiungere seconda persona (mobile) */}
-                            {isAdmin && canAddMore && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openCreate(iso, slot);
-                                }}
-                                className="flex w-full items-center justify-center rounded-md border border-dashed py-1 text-xs transition-opacity active:opacity-100"
-                                style={{ borderColor: `${shift.color.accent}40`, color: shift.color.accent }}
-                              >
-                                + seconda persona
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          isAdmin && canAddMore && (
-                            <div className="flex h-10 items-center justify-center opacity-30 transition-opacity group-active:opacity-70">
-                              <span
-                                className="font-mono text-base"
-                                style={{ color: shift.color.accent }}
-                              >
-                                +
-                              </span>
-                            </div>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {/* ============ VISTA MESE ============ */}
+      {viewMode === "mese" && (
+        <MonthView
+          mondayIso={mondayIso}
+          monthTurniByDay={monthTurniByDay}
+          currentUserId={currentUserId}
+          onlyMine={onlyMine}
+          setOnlyMine={setOnlyMine}
+        />
+      )}
 
       {/* Errore delete */}
       {deleteError && (
@@ -479,7 +318,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
       )}
 
       {/* Stato vuoto (nessun turno nella settimana) */}
-      {turni.length === 0 && (
+      {viewMode === "lista" && turni.length === 0 && (
         <div className="mt-6 rounded-lg border border-dashed border-border bg-surface/50 p-8 text-center">
           <p className="font-mono text-sm text-fg-dim">
             Nessun turno assegnato per questa settimana.
@@ -499,11 +338,7 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
         />
       )}
       {modal.kind === "create-blank" && (
-        <ShiftForm
-          mode="create"
-          members={members}
-          onClose={() => setModal({ kind: "closed" })}
-        />
+        <ShiftForm mode="create" members={members} onClose={() => setModal({ kind: "closed" })} />
       )}
       {modal.kind === "edit" && (
         <ShiftForm
@@ -518,7 +353,575 @@ export default function Calendar({ turni, members, isAdmin, mondayIso }: Calenda
 }
 
 // ============================================================================
-// TurnoCard — card di un turno, condivisa tra vista desktop e mobile.
+//  CAROSELLO STATISTICHE
+// ============================================================================
+function StatsCarousel({
+  stats,
+  currentUserId,
+}: {
+  stats: StatsData;
+  currentUserId: string;
+}) {
+  const positions = ["🥇", "🥈", "🥉"];
+
+  return (
+    <div className="mb-6 -mx-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+      <div className="flex gap-3" style={{ minWidth: "min-content" }}>
+        {/* Card 1: Il tuo mese */}
+        <div
+          className="flex shrink-0 flex-col rounded-2xl border p-4"
+          style={{
+            width: "200px",
+            background: "var(--color-surface-active)",
+            borderColor: "rgba(0, 229, 255, 0.25)",
+            boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 2px 12px rgba(0, 0, 0, 0.22)",
+          }}
+        >
+          <div className="font-mono text-[10px] uppercase tracking-wider text-fg-dim">
+            Il tuo mese
+          </div>
+          <div className="mt-2 flex items-baseline gap-1">
+            <span className="font-mono text-3xl font-bold text-accent">
+              {stats.myMonthHours}
+            </span>
+            <span className="font-mono text-xs text-fg-muted">ore</span>
+          </div>
+          <div className="mt-1 font-mono text-xs text-fg-muted">
+            {stats.myMonthTurniCount} turni
+          </div>
+        </div>
+
+        {/* Card 2: Podio FantaTab */}
+        <div
+          className="flex shrink-0 flex-col rounded-2xl border p-4"
+          style={{
+            width: "220px",
+            background: "var(--color-surface-active)",
+            borderColor: "rgba(255, 210, 74, 0.25)",
+            boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 2px 12px rgba(0, 0, 0, 0.22)",
+          }}
+        >
+          <div className="font-mono text-[10px] uppercase tracking-wider text-fg-dim">
+            Podio FantaTab
+          </div>
+          <div className="mt-2 space-y-1.5">
+            {stats.podio.length === 0 ? (
+              <div className="font-mono text-xs text-fg-dim">Nessun dato</div>
+            ) : (
+              stats.podio.map((r, i) => (
+                <div key={r.user_id} className="flex items-center gap-2">
+                  <span className="text-sm">{positions[i]}</span>
+                  <span
+                    className="truncate text-xs font-medium"
+                    style={{ color: r.user_id === currentUserId ? "var(--color-accent)" : "var(--color-fg)" }}
+                  >
+                    {r.nome}
+                  </span>
+                  <span className="ml-auto font-mono text-xs font-bold" style={{ color: VALUTE.fuoco.color }}>
+                    {r.totale_fuoco}
+                  </span>
+                  {r.totale_diamanti > 0 && (
+                    <span className="font-mono text-xs" style={{ color: VALUTE.diamante.color }}>
+                      {r.totale_diamanti}💎
+                    </span>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Card 3: Prossimo turno */}
+        <div
+          className="flex shrink-0 flex-col rounded-2xl border p-4"
+          style={{
+            width: "200px",
+            background: "var(--color-surface-active)",
+            borderColor: "rgba(0, 255, 163, 0.25)",
+            boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 2px 12px rgba(0, 0, 0, 0.22)",
+          }}
+        >
+          <div className="font-mono text-[10px] uppercase tracking-wider text-fg-dim">
+            Prossimo turno
+          </div>
+          {stats.nextTurno ? (
+            <>
+              <div className="mt-2 font-mono text-lg font-bold text-fg">
+                {formatDayLabel(stats.nextTurno.data).weekday} {stats.nextTurno.data.slice(8)}
+              </div>
+              <div className="mt-1 font-mono text-xs text-fg-muted">
+                {stats.nextTurno.oraInizio} – {stats.nextTurno.oraFine}
+              </div>
+            </>
+          ) : (
+            <div className="mt-2 font-mono text-xs text-fg-dim">
+              Nessun turno programmato
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+//  VISTA MESE
+// ============================================================================
+function MonthView({
+  mondayIso,
+  monthTurniByDay,
+  currentUserId,
+  onlyMine,
+  setOnlyMine,
+}: {
+  mondayIso: string;
+  monthTurniByDay: Map<string, TurnoWithMember[]>;
+  currentUserId: string;
+  onlyMine: boolean;
+  setOnlyMine: (v: boolean) => void;
+}) {
+  const grid = useMemo(() => monthGrid(mondayIso), [mondayIso]);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const weekdays = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
+
+  return (
+    <>
+      {/* Toggle "Solo i miei turni" */}
+      <div className="mb-4 flex items-center justify-end gap-2">
+        <span className="font-mono text-xs text-fg-muted">Solo i miei turni</span>
+        <button
+          type="button"
+          onClick={() => setOnlyMine(!onlyMine)}
+          className="relative h-6 w-11 rounded-full transition-colors"
+          style={{
+            background: onlyMine
+              ? "linear-gradient(135deg, #00e5ff 0%, #00ffa3 100%)"
+              : "rgba(255, 255, 255, 0.12)",
+          }}
+          aria-pressed={onlyMine}
+        >
+          <span
+            className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform"
+            style={{ left: onlyMine ? "22px" : "2px" }}
+          />
+        </button>
+      </div>
+
+      {/* Lettere giorni con glow ciano */}
+      <div className="mb-2 grid grid-cols-7 gap-1">
+        {weekdays.map((wd) => (
+          <div
+            key={wd}
+            className="py-1.5 text-center font-mono text-xs font-bold uppercase tracking-wider"
+            style={{
+              color: "var(--color-accent)",
+              textShadow: "0 0 8px rgba(0, 229, 255, 0.4)",
+            }}
+          >
+            {wd}
+          </div>
+        ))}
+      </div>
+
+      {/* Griglia mese */}
+      <div className="grid grid-cols-7 gap-1">
+        {grid.map((iso, i) => {
+          if (iso === null) {
+            return <div key={`empty-${i}`} className="min-h-[64px] rounded-lg" />;
+          }
+
+          const dayTurni = monthTurniByDay.get(iso) ?? [];
+          const today = iso === todayIso;
+          const hasMine = dayTurni.some((t) => t.user_id === currentUserId);
+          const label = formatDayLabel(iso);
+
+          // Filtro "Solo i miei turni": oscura i giorni senza l'utente
+          const dimmed = onlyMine && !hasMine;
+
+          return (
+            <Link
+              key={iso}
+              href={`/?week=${mondayOfWeekFromDate(iso)}`}
+              className="relative flex min-h-[64px] flex-col rounded-lg border p-1.5 transition-all"
+              style={{
+                background: today
+                  ? "linear-gradient(180deg, rgba(0, 229, 255, 0.18) 0%, rgba(0, 229, 255, 0.06) 100%)"
+                  : dayTurni.length > 0
+                    ? "var(--color-surface-active)"
+                    : "rgba(255, 255, 255, 0.03)",
+                borderColor: today
+                  ? "rgba(0, 229, 255, 0.55)"
+                  : hasMine
+                    ? "rgba(0, 255, 163, 0.5)"
+                    : "rgba(255, 255, 255, 0.1)",
+                boxShadow: today
+                  ? "0 0 16px rgba(0, 229, 255, 0.2)"
+                  : hasMine
+                    ? "0 0 12px rgba(0, 255, 163, 0.18)"
+                    : "none",
+                opacity: dimmed ? 0.3 : 1,
+                filter: dimmed ? "grayscale(0.6)" : "none",
+              }}
+            >
+              {/* Numero giorno */}
+              <div className="flex items-center justify-between">
+                <span
+                  className={`font-mono text-xs font-semibold ${
+                    today ? "text-white" : "text-fg"
+                  }`}
+                >
+                  {iso.slice(8)}
+                </span>
+                {today && (
+                  <span className="rounded bg-accent/20 px-1 font-mono text-[8px] font-bold uppercase text-accent">
+                    Oggi
+                  </span>
+                )}
+              </div>
+
+              {/* Pallini persona */}
+              <div className="mt-1 flex flex-wrap gap-0.5">
+                {dayTurni.slice(0, 6).map((t) => (
+                  <span
+                    key={t.id}
+                    className="h-2 w-2 rounded-full"
+                    style={{
+                      background: personColor(t.user_id),
+                      boxShadow: t.user_id === currentUserId
+                        ? `0 0 6px ${personColor(t.user_id)}`
+                        : "none",
+                      outline: t.user_id === currentUserId
+                        ? `1px solid ${personColor(t.user_id)}`
+                        : "none",
+                    }}
+                  />
+                ))}
+                {dayTurni.length > 6 && (
+                  <span className="font-mono text-[8px] text-fg-dim">+{dayTurni.length - 6}</span>
+                )}
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+// Helper: lunedì della settimana contenente una data ISO
+function mondayOfWeekFromDate(iso: string): string {
+  const d = new Date(iso + "T00:00:00Z");
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+// ============================================================================
+//  VISTA SETTIMANA DESKTOP (≥640px)
+// ============================================================================
+function WeekViewDesktop({
+  days,
+  turniMap,
+  isAdmin,
+  deletingId,
+  onEdit,
+  onDelete,
+  openCreate,
+}: {
+  days: string[];
+  turniMap: Map<string, TurnoWithMember[]>;
+  isAdmin: boolean;
+  deletingId: string | null;
+  onEdit: (t: TurnoWithMember) => void;
+  onDelete: (id: string) => void;
+  openCreate: (date: string, slot: ShiftSlot) => void;
+}) {
+  return (
+    <div className="panel hidden overflow-hidden sm:block">
+      {/* Header giorni */}
+      <div className="grid grid-cols-[100px_repeat(7,1fr)] border-b border-border bg-surface-2">
+        <div className="px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider text-fg-dim">
+          Fascia
+        </div>
+        {days.map((iso) => {
+          const label = formatDayLabel(iso);
+          const today = isToday(iso);
+          return (
+            <div
+              key={iso}
+              className={`px-3 py-2.5 text-center border-l border-border ${
+                today ? "today-highlight" : ""
+              }`}
+            >
+              <div
+                className={`font-mono text-[11px] uppercase tracking-wider ${
+                  today ? "text-accent" : "text-fg-dim"
+                }`}
+              >
+                {label.weekday}
+              </div>
+              <div
+                className={`font-mono text-sm font-medium ${
+                  today ? "text-white" : "text-fg"
+                }`}
+              >
+                {label.day}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Righe fasce */}
+      {SHIFT_ORDER.map((slot) => {
+        const shift = SHIFTS[slot];
+        return (
+          <div
+            key={slot}
+            className="grid grid-cols-[100px_repeat(7,1fr)] border-b border-border last:border-b-0"
+          >
+            <div
+              className="flex flex-col justify-center px-3 py-3 border-r border-border"
+              style={{ background: shift.color.bg }}
+            >
+              <div
+                className="font-mono text-xs font-medium uppercase tracking-wider"
+                style={{ color: shift.color.accent }}
+              >
+                {shift.label}
+              </div>
+              <div className="mt-0.5 font-mono text-[11px] text-fg-dim">
+                {shift.start}–{shift.end}
+              </div>
+            </div>
+
+            {days.map((iso) => {
+              const key = `${iso}|${slot}`;
+              const cellTurni = turniMap.get(key) ?? [];
+              const hasTurni = cellTurni.length > 0;
+              const canAddMore = cellTurni.length < 2;
+              return (
+                <div
+                  key={iso}
+                  className="group relative min-h-[80px] overflow-hidden border-l border-border p-2 transition-colors"
+                  style={{ background: hasTurni ? shift.color.bg : "var(--color-base)" }}
+                  onMouseEnter={(e) => {
+                    if (isAdmin && canAddMore) e.currentTarget.style.background = shift.color.bgHover;
+                  }}
+                  onMouseLeave={(e) => {
+                    if (isAdmin && canAddMore)
+                      e.currentTarget.style.background = hasTurni ? shift.color.bg : "var(--color-base)";
+                  }}
+                  onClick={() => {
+                    if (isAdmin && canAddMore) openCreate(iso, slot);
+                  }}
+                  role={isAdmin && canAddMore ? "button" : undefined}
+                  title={isAdmin && canAddMore ? (hasTurni ? "Aggiungi seconda persona" : "Clicca per assegnare turno") : undefined}
+                >
+                  <div className="space-y-1.5">
+                    {cellTurni.map((t) => (
+                      <TurnoCard
+                        key={t.id}
+                        turno={t}
+                        shift={shift}
+                        isAdmin={isAdmin}
+                        deleting={deletingId === t.id}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                      />
+                    ))}
+                  </div>
+
+                  {isAdmin && canAddMore && !hasTurni && (
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-60 pointer-events-none">
+                      <span className="font-mono text-lg" style={{ color: shift.color.accent }}>+</span>
+                    </div>
+                  )}
+                  {isAdmin && canAddMore && hasTurni && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openCreate(iso, slot);
+                      }}
+                      className="mt-1.5 flex w-full items-center justify-center rounded-md border border-dashed py-1 text-xs opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-70"
+                      style={{ borderColor: `${shift.color.accent}40`, color: shift.color.accent }}
+                    >
+                      + seconda persona
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================================================
+//  VISTA SETTIMANA MOBILE (<640px)
+// ============================================================================
+function WeekViewMobile({
+  days,
+  turniMap,
+  isAdmin,
+  deletingId,
+  onEdit,
+  onDelete,
+  openCreate,
+  todayRef,
+}: {
+  days: string[];
+  turniMap: Map<string, TurnoWithMember[]>;
+  isAdmin: boolean;
+  deletingId: string | null;
+  onEdit: (t: TurnoWithMember) => void;
+  onDelete: (id: string) => void;
+  openCreate: (date: string, slot: ShiftSlot) => void;
+  todayRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <div className="space-y-5 sm:hidden">
+      {days.map((iso) => {
+        const label = formatDayLabel(iso);
+        const today = isToday(iso);
+        const dayTurni = SHIFT_ORDER.map((slot) => ({
+          slot,
+          shift: SHIFTS[slot],
+          turni: turniMap.get(`${iso}|${slot}`) ?? [],
+        }));
+        const dayHasTurni = dayTurni.some((d) => d.turni.length > 0);
+
+        return (
+          <div
+            key={iso}
+            ref={today ? todayRef : undefined}
+            className={`${
+              today
+                ? "today-card panel-no-blur"
+                : dayHasTurni
+                  ? "day-card-active"
+                  : "panel-no-blur"
+            } overflow-hidden`}
+          >
+            {/* Header giorno */}
+            <div
+              className={`flex items-center justify-between px-5 py-4 border-b border-border ${
+                today ? "today-highlight" : "bg-surface-2"
+              }`}
+            >
+              <div className="flex items-baseline gap-3">
+                <span
+                  className={`font-mono text-xs uppercase tracking-wider ${
+                    today ? "text-accent" : "text-fg-dim"
+                  }`}
+                >
+                  {label.weekday}
+                </span>
+                <span
+                  className={`font-mono text-base font-semibold ${
+                    today ? "text-white" : "text-fg"
+                  }`}
+                >
+                  {label.day}
+                </span>
+                {today && (
+                  <span className="rounded-md bg-accent/20 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-accent">
+                    Oggi
+                  </span>
+                )}
+              </div>
+              <span
+                className={`font-mono text-[11px] ${
+                  dayHasTurni ? "text-accent" : "text-fg-dim"
+                }`}
+              >
+                {dayHasTurni ? `${dayTurni.reduce((n, d) => n + d.turni.length, 0)} turni` : "vuoto"}
+              </span>
+            </div>
+
+            {/* 3 fasce */}
+            <div className="divide-y divide-border">
+              {dayTurni.map(({ slot, shift, turni: cellTurni }) => {
+                const hasTurni = cellTurni.length > 0;
+                const canAddMore = cellTurni.length < 2;
+                return (
+                  <div
+                    key={slot}
+                    className="group relative flex items-stretch transition-colors"
+                    style={{ background: hasTurni ? shift.color.bg : "var(--color-base)" }}
+                    onClick={() => {
+                      if (isAdmin && canAddMore && !hasTurni) openCreate(iso, slot);
+                    }}
+                    role={isAdmin && canAddMore && !hasTurni ? "button" : undefined}
+                    title={isAdmin && canAddMore && !hasTurni ? "Tocca per assegnare turno" : undefined}
+                  >
+                    {/* Label fascia */}
+                    <div className="flex w-20 shrink-0 flex-col justify-center px-3 py-3 border-r border-border">
+                      <div
+                        className="font-mono text-[11px] font-medium uppercase tracking-wider"
+                        style={{ color: shift.color.accent }}
+                      >
+                        {shift.label}
+                      </div>
+                      <div className="mt-0.5 font-mono text-[10px] text-fg-dim">
+                        {shift.start}–{shift.end}
+                      </div>
+                    </div>
+
+                    {/* Contenuto */}
+                    <div className="min-w-0 flex-1 p-2">
+                      {cellTurni.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {cellTurni.map((t) => (
+                            <TurnoCard
+                              key={t.id}
+                              turno={t}
+                              shift={shift}
+                              isAdmin={isAdmin}
+                              deleting={deletingId === t.id}
+                              onEdit={onEdit}
+                              onDelete={onDelete}
+                            />
+                          ))}
+                          {isAdmin && canAddMore && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openCreate(iso, slot);
+                              }}
+                              className="flex w-full items-center justify-center rounded-md border border-dashed py-1 text-xs transition-opacity active:opacity-100"
+                              style={{ borderColor: `${shift.color.accent}40`, color: shift.color.accent }}
+                            >
+                              + seconda persona
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        isAdmin && canAddMore && (
+                          <div className="flex h-10 items-center justify-center opacity-30 transition-opacity group-active:opacity-70">
+                            <span className="font-mono text-base" style={{ color: shift.color.accent }}>+</span>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================================================
+//  TurnoCard — card di un turno, condivisa tra vista desktop e mobile.
 // ============================================================================
 interface TurnoCardProps {
   turno: TurnoWithMember;
@@ -534,8 +937,6 @@ function TurnoCard({ turno, shift, isAdmin, deleting, onEdit, onDelete }: TurnoC
     <div
       className="max-w-full px-3 py-2 animate-fade-in"
       style={{
-        // Glass senza backdrop-filter (troppi elementi simultanei = scroll a scatti su mobile).
-        // L'estetica glass è mantenuta da: sfondo traslucido + bordo luminoso + inner shadow.
         background: "rgba(46, 125, 50, 0.22)",
         border: "1.5px solid rgba(111, 227, 165, 0.5)",
         borderRadius: "20px",

@@ -111,3 +111,98 @@ export function isToday(iso: string): boolean {
   const today = new Date().toISOString().slice(0, 10);
   return iso === today;
 }
+
+// ============================================================================
+//  Helper per vista Mese
+// ============================================================================
+
+// Restituisce { year, month, firstDayIso, lastDayIso } per il mese contenente
+// una data ISO (o il mese corrente se non specificata). ISO date YYYY-MM-DD.
+export function monthRange(iso?: string): {
+  year: number;
+  month: number; // 0-11
+  firstDayIso: string;
+  lastDayIso: string;
+} {
+  const d = iso ? new Date(iso + "T00:00:00Z") : new Date();
+  const year = d.getUTCFullYear();
+  const month = d.getUTCMonth();
+  const first = new Date(Date.UTC(year, month, 1));
+  const last = new Date(Date.UTC(year, month + 1, 0));
+  return {
+    year,
+    month,
+    firstDayIso: first.toISOString().slice(0, 10),
+    lastDayIso: last.toISOString().slice(0, 10),
+  };
+}
+
+// Restituisce tutte le date (ISO) del mese, in ordine, UTC.
+export function monthDays(iso?: string): string[] {
+  const { year, month } = monthRange(iso);
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  return Array.from({ length: lastDay }, (_, i) => {
+    const d = new Date(Date.UTC(year, month, i + 1));
+    return d.toISOString().slice(0, 10);
+  });
+}
+
+// Restituisce la griglia del mese per la vista Mese: array di celle
+// (ISO date | null per i giorni del mese precedente/successivo che riempiono
+// la griglia a settimane complete). Inizia dal lunedì prima del primo del mese.
+export function monthGrid(iso?: string): (string | null)[] {
+  const { firstDayIso } = monthRange(iso);
+  const days = monthDays(iso);
+  const firstDow = new Date(firstDayIso + "T00:00:00Z").getUTCDay(); // 0=Dom
+  const offset = firstDow === 0 ? 6 : firstDow - 1; // distanza dal lunedì
+
+  const cells: (string | null)[] = [];
+  // Giorni del mese precedente (padding iniziale)
+  for (let i = offset; i > 0; i--) {
+    cells.push(null);
+  }
+  // Giorni del mese
+  for (const d of days) {
+    cells.push(d);
+  }
+  // Padding finale fino a multiplo di 7
+  while (cells.length % 7 !== 0) {
+    cells.push(null);
+  }
+  return cells;
+}
+
+// Calcola le ore lavorate di un turno (differenza tra ora_fine e ora_inizio).
+// Gestisce il caso overnight (es. 16:00→00:00 = 8h).
+export function shiftHours(oraInizio: string, oraFine: string): number {
+  const [ih, im] = oraInizio.slice(0, 5).split(":").map(Number);
+  const [fh, fm] = oraFine.slice(0, 5).split(":").map(Number);
+  let start = ih * 60 + im;
+  let end = fh * 60 + fm;
+  if (end <= start) end += 24 * 60; // overnight
+  return (end - start) / 60;
+}
+
+// ============================================================================
+//  Mappa persona → colore (pallini vista Mese)
+//  Palette di 8 colori vivaci ma leggibili su sfondo dark.
+//  Assegnazione deterministica basata su hash dell'user_id.
+// ============================================================================
+const PERSON_COLORS = [
+  "#00e5ff", // ciano
+  "#00ffa3", // verde acqua
+  "#ffd24a", // oro
+  "#ff7d52", // arancio
+  "#9b8cff", // viola
+  "#ff5e8a", // rosa
+  "#5eb3ff", // azzurro
+  "#a8ff5e", // lime
+];
+
+export function personColor(userId: string): string {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash * 31 + userId.charCodeAt(i)) | 0;
+  }
+  return PERSON_COLORS[Math.abs(hash) % PERSON_COLORS.length];
+}

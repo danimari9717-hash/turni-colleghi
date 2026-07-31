@@ -10,6 +10,22 @@ export default function Loading() {
     <>
       <Header profile={null} />
       <main className="safe-bottom mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        {/* Carosello statistiche skeleton */}
+        <div className="mb-6 flex gap-3 overflow-hidden">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-24 shrink-0 animate-pulse rounded-2xl border border-border bg-surface-2"
+              style={{ width: i === 1 ? "220px" : "200px" }}
+            />
+          ))}
+        </div>
+
+        {/* Toggle skeleton */}
+        <div className="mb-4 flex justify-center">
+          <div className="h-9 w-40 animate-pulse rounded-xl bg-surface-2" />
+        </div>
+
         {/* Titolo + nav skeleton */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
