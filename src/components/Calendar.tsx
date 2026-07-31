@@ -100,25 +100,31 @@ export default function Calendar({
 
   // Auto-scroll fluido: al giorno corrente (default) o al giorno target
   // (dopo tap da vista Mese). Solo vista Lista mobile.
+  // IMPORTANTE: scrollTargetDay viene resettato a null dopo l'uso, così
+  // le navigazioni successive (es. dal menu) tornano a scrollare a "oggi".
   useEffect(() => {
     if (viewMode !== "lista") return;
-    // Se c'è un target specifico, scrolla a quello; altrimenti a "oggi".
-    const target = scrollTargetDay ?? (todayIsInWeek ? todayIso : null);
-    if (!target || !days.includes(target)) {
-      // Se il target non è nella settimana visualizzata, scrolla a "oggi" se presente.
-      if (todayIsInWeek) {
-        const raf = requestAnimationFrame(() => {
-          todayRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
-        return () => cancelAnimationFrame(raf);
-      }
-      return;
+
+    // Caso 1: target specifico (da tap in Vista Mese).
+    if (scrollTargetDay) {
+      // Se il target non è nella settimana visualizzata, attendi la
+      // navigazione (router.push) — non scrollare a "oggi" come fallback.
+      if (!days.includes(scrollTargetDay)) return;
+      const raf = requestAnimationFrame(() => {
+        dayRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Reset: le prossime navigazioni tornano a "oggi" come default.
+        setScrollTargetDay(null);
+      });
+      return () => cancelAnimationFrame(raf);
     }
+
+    // Caso 2: nessun target specifico → scrolla al giorno corrente (default).
+    if (!todayIsInWeek) return;
     const raf = requestAnimationFrame(() => {
-      dayRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      todayRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     return () => cancelAnimationFrame(raf);
-  }, [viewMode, mondayIso, scrollTargetDay, todayIsInWeek, todayIso, days]);
+  }, [viewMode, mondayIso, scrollTargetDay, todayIsInWeek, days]);
 
   // Mappa turni settimana per accesso rapido: key = `${date}|${slot}`
   const turniMap = useMemo(() => {
