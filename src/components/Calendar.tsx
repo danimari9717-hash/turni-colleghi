@@ -193,13 +193,38 @@ export default function Calendar({
     return map;
   }, [monthTurni]);
 
-  // Navigazione settimana
+  // Navigazione settimana (vista Lista)
   const prevWeek = new Date(mondayIso + "T00:00:00Z");
   prevWeek.setUTCDate(prevWeek.getUTCDate() - 7);
   const nextWeek = new Date(mondayIso + "T00:00:00Z");
   nextWeek.setUTCDate(nextWeek.getUTCDate() + 7);
   const prevIso = prevWeek.toISOString().slice(0, 10);
   const nextIso = nextWeek.toISOString().slice(0, 10);
+
+  // Navigazione mese (vista Mese): sposta il mese di ±1 e restituisce
+  // il lunedì della settimana contenente il primo del mese target.
+  // Questo permette di riutilizzare lo stesso parametro ?week= che
+  // determina sia la settimana (vista Lista) sia il mese (vista Mese).
+  const prevMonthMonday = useMemo(() => {
+    const d = new Date(mondayIso + "T00:00:00Z");
+    d.setUTCMonth(d.getUTCMonth() - 1);
+    d.setUTCDate(1);
+    return mondayOfWeekFromDate(d.toISOString().slice(0, 10));
+  }, [mondayIso]);
+  const nextMonthMonday = useMemo(() => {
+    const d = new Date(mondayIso + "T00:00:00Z");
+    d.setUTCMonth(d.getUTCMonth() + 1);
+    d.setUTCDate(1);
+    return mondayOfWeekFromDate(d.toISOString().slice(0, 10));
+  }, [mondayIso]);
+
+  // Destinazioni di navigazione condizionali in base alla vista attiva.
+  const prevHref = viewMode === "mese" ? `/?week=${prevMonthMonday}` : `/?week=${prevIso}`;
+  const nextHref = viewMode === "mese" ? `/?week=${nextMonthMonday}` : `/?week=${nextIso}`;
+  // "Oggi" torna alla settimana corrente in entrambe le viste; in Vista
+  // Mese questo mostra il mese corrente (la settimana corrente è nel
+  // mese corrente).
+  const todayHref = `/?week=${todayIso}`;
 
   const firstLabel = formatDayLabel(days[0]);
   const lastLabel = formatDayLabel(days[6]);
@@ -309,13 +334,13 @@ export default function Calendar({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Link href={`/?week=${prevIso}`} className="px-3 py-2 text-sm" aria-label="Precedente" style={navBtnStyle}>
+          <Link href={prevHref} className="px-3 py-2 text-sm" aria-label="Precedente" style={navBtnStyle}>
             ←
           </Link>
-          <Link href={`/?week=${todayIso}`} className="px-4 py-2 text-sm font-medium" style={navBtnStyle}>
+          <Link href={todayHref} className="px-4 py-2 text-sm font-medium" style={navBtnStyle}>
             Oggi
           </Link>
-          <Link href={`/?week=${nextIso}`} className="px-3 py-2 text-sm" aria-label="Successivo" style={navBtnStyle}>
+          <Link href={nextHref} className="px-3 py-2 text-sm" aria-label="Successivo" style={navBtnStyle}>
             →
           </Link>
           {isAdmin && viewMode === "lista" && (
