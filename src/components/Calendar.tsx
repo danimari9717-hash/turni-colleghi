@@ -13,7 +13,9 @@ import {
   slotFromStart,
   monthGrid,
   monthRange,
-  personColor,
+  personColorEntry,
+  personInitial,
+  personColorList,
   type ShiftSlot,
   type ShiftDefinition,
 } from "@/lib/shifts";
@@ -608,27 +610,51 @@ function MonthView({
   const grid = useMemo(() => monthGrid(mondayIso), [mondayIso]);
   const todayIso = new Date().toISOString().slice(0, 10);
   const weekdays = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
+  const legend = useMemo(() => personColorList(), []);
+
   return (
     <>
-      {/* Toggle "Solo i miei turni" */}
-      <div className="mb-4 flex items-center justify-end gap-2">
-        <span className="font-mono text-xs text-fg-muted">Solo i miei turni</span>
-        <button
-          type="button"
-          onClick={() => setOnlyMine(!onlyMine)}
-          className="relative h-6 w-11 rounded-full transition-colors"
-          style={{
-            background: onlyMine
-              ? "linear-gradient(135deg, #00e5ff 0%, #00ffa3 100%)"
-              : "rgba(255, 255, 255, 0.12)",
-          }}
-          aria-pressed={onlyMine}
-        >
-          <span
-            className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform"
-            style={{ left: onlyMine ? "22px" : "2px" }}
-          />
-        </button>
+      {/* Toggle "Solo i miei turni" + legenda persone */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        {/* Legenda colori persone */}
+        <div className="flex flex-wrap gap-2">
+          {legend.map((entry) => (
+            <div key={entry.label} className="flex items-center gap-1.5">
+              <span
+                className="flex h-4 w-4 items-center justify-center rounded-full font-bold"
+                style={{
+                  background: entry.color,
+                  color: entry.textColor,
+                  fontSize: "8px",
+                }}
+              >
+                {personInitial(entry.label)}
+              </span>
+              <span className="font-mono text-[10px] text-fg-muted">{entry.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Toggle */}
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-fg-muted">Solo i miei turni</span>
+          <button
+            type="button"
+            onClick={() => setOnlyMine(!onlyMine)}
+            className="relative h-6 w-11 rounded-full transition-colors"
+            style={{
+              background: onlyMine
+                ? "linear-gradient(135deg, #00e5ff 0%, #00ffa3 100%)"
+                : "rgba(255, 255, 255, 0.12)",
+            }}
+            aria-pressed={onlyMine}
+          >
+            <span
+              className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform"
+              style={{ left: onlyMine ? "22px" : "2px" }}
+            />
+          </button>
+        </div>
       </div>
 
       {/* Lettere giorni con glow ciano */}
@@ -750,26 +776,73 @@ function MonthDayCell({
         )}
       </div>
 
-      {/* Pallini persona */}
-      <div className="mt-1 flex flex-wrap gap-0.5">
-        {dayTurni.slice(0, 6).map((t) => (
-          <span
-            key={t.id}
-            className="h-2 w-2 rounded-full"
-            style={{
-              background: personColor(t.user_id),
-              boxShadow: t.user_id === currentUserId
-                ? `0 0 6px ${personColor(t.user_id)}`
-                : "none",
-              outline: t.user_id === currentUserId
-                ? `1px solid ${personColor(t.user_id)}`
-                : "none",
-            }}
-          />
-        ))}
-        {dayTurni.length > 6 && (
-          <span className="font-mono text-[8px] text-fg-dim">+{dayTurni.length - 6}</span>
-        )}
+      {/* Avatar iniziali colorate (stile Google Calendar) */}
+      {/* Deduplica per user_id: una persona può avere più turni lo stesso giorno */}
+      <div className="mt-1 flex items-center">
+        {(() => {
+          const seen = new Set<string>();
+          const unique = dayTurni.filter((t) => {
+            if (seen.has(t.user_id)) return false;
+            seen.add(t.user_id);
+            return true;
+          });
+          const maxShow = 3;
+          const shown = unique.slice(0, maxShow);
+          const extra = unique.length - shown.length;
+          return (
+            <>
+              {shown.map((t, idx) => {
+                const nome = t.member_nome ?? t.user_id;
+                const entry = personColorEntry(nome);
+                const isMe = t.user_id === currentUserId;
+                return (
+                  <span
+                    key={t.id}
+                    className="relative flex items-center justify-center rounded-full font-bold"
+                    style={{
+                      width: "18px",
+                      height: "18px",
+                      fontSize: "9px",
+                      background: entry.color,
+                      color: entry.textColor,
+                      // Sovrapposizione: primo avatar a sinistra, successivi
+                      // si sovrappongono di ~6px (33% di 18px).
+                      marginLeft: idx === 0 ? 0 : "-6px",
+                      // Bordo del colore della cella per separare gli avatar
+                      border: `1.5px solid ${
+                        today ? "rgba(0, 229, 255, 0.3)" : "var(--color-base)"
+                      }`,
+                      // Glow per l'avatar dell'utente corrente
+                      boxShadow: isMe ? `0 0 6px ${entry.color}` : "none",
+                      zIndex: shown.length - idx, // primo avatar sopra gli altri
+                    }}
+                  >
+                    {personInitial(nome)}
+                  </span>
+                );
+              })}
+              {extra > 0 && (
+                <span
+                  className="relative flex items-center justify-center rounded-full font-mono font-bold"
+                  style={{
+                    width: "18px",
+                    height: "18px",
+                    fontSize: "8px",
+                    background: "rgba(255, 255, 255, 0.15)",
+                    color: "var(--color-fg-muted)",
+                    marginLeft: "-6px",
+                    border: `1.5px solid ${
+                      today ? "rgba(0, 229, 255, 0.3)" : "var(--color-base)"
+                    }`,
+                    zIndex: 0,
+                  }}
+                >
+                  +{extra}
+                </span>
+              )}
+            </>
+          );
+        })()}
       </div>
     </button>
   );

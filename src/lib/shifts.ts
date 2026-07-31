@@ -184,25 +184,69 @@ export function shiftHours(oraInizio: string, oraFine: string): number {
 }
 
 // ============================================================================
-//  Mappa persona → colore (pallini vista Mese)
-//  Palette di 8 colori vivaci ma leggibili su sfondo dark.
-//  Assegnazione deterministica basata su hash dell'user_id.
+//  Mappa persona → colore (avatar vista Mese + legenda)
+//  Colori scelti per buon contrasto su sfondo dark e per distinguersi
+//  dai colori delle fasce orarie (Mattino=oro, Pomeriggio=arancio,
+//  Notte=viola). Per Daniele e Daniluzzu si usano tonalità leggermente
+//  diverse rispetto alle fasce per evitare ambiguità visiva.
+//  La mappa è per NOME (case-insensitive, match su primo nome).
+//  Fallback: hash dell'user_id su una palette di 8 colori.
 // ============================================================================
-const PERSON_COLORS = [
+
+export interface PersonColorEntry {
+  color: string;       // colore di sfondo dell'avatar
+  textColor: string;   // colore del testo (iniziale) sopra l'avatar
+  label: string;       // etichetta per legenda
+}
+
+// Mappa nome → colore, centralizzata e definitiva.
+// I nomi sono lowercased per match case-insensitive.
+const PERSON_COLOR_MAP: Record<string, PersonColorEntry> = {
+  enrica: { color: "#F472B6", textColor: "#ffffff", label: "Enrica" },      // rosa
+  daniele: { color: "#FACC15", textColor: "#1a1a2e", label: "Daniele" },    // giallo (più vivo del Mattino #FFD24A)
+  fabrizio: { color: "#3B82F6", textColor: "#ffffff", label: "Fabrizio" },  // blu
+  daniluzzu: { color: "#FF6B4A", textColor: "#ffffff", label: "Daniluzzu" },// arancio (più rosso del Pomeriggio #FF7D52)
+  antonino: { color: "#C2845C", textColor: "#ffffff", label: "Antonino" },  // marrone schiarito per leggibilità
+};
+
+// Palette di fallback per utenti non in mappa.
+const PERSON_COLORS_FALLBACK = [
   "#00e5ff", // ciano
   "#00ffa3", // verde acqua
-  "#ffd24a", // oro
-  "#ff7d52", // arancio
-  "#9b8cff", // viola
-  "#ff5e8a", // rosa
-  "#5eb3ff", // azzurro
   "#a8ff5e", // lime
+  "#5eb3ff", // azzurro
 ];
 
-export function personColor(userId: string): string {
+// Restituisce il colore di sfondo per una persona (per nome o user_id).
+export function personColor(nome: string): string {
+  const key = nome.toLowerCase().trim();
+  if (PERSON_COLOR_MAP[key]) return PERSON_COLOR_MAP[key].color;
+  // Fallback hash-based su user_id (presuppone che nome sia un user_id)
   let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    hash = (hash * 31 + userId.charCodeAt(i)) | 0;
+  for (let i = 0; i < nome.length; i++) {
+    hash = (hash * 31 + nome.charCodeAt(i)) | 0;
   }
-  return PERSON_COLORS[Math.abs(hash) % PERSON_COLORS.length];
+  return PERSON_COLORS_FALLBACK[Math.abs(hash) % PERSON_COLORS_FALLBACK.length];
+}
+
+// Restituisce l'entry completa (color + textColor) per una persona.
+export function personColorEntry(nome: string): PersonColorEntry {
+  const key = nome.toLowerCase().trim();
+  if (PERSON_COLOR_MAP[key]) return PERSON_COLOR_MAP[key];
+  // Fallback: testo bianco su colore hash
+  return {
+    color: personColor(nome),
+    textColor: "#ffffff",
+    label: nome,
+  };
+}
+
+// Restituisce la prima iniziale (maiuscola) di un nome.
+export function personInitial(nome: string): string {
+  return (nome.trim()[0] ?? "?").toUpperCase();
+}
+
+// Restituisce tutte le persone note (per legenda).
+export function personColorList(): PersonColorEntry[] {
+  return Object.values(PERSON_COLOR_MAP);
 }
