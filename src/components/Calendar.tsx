@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { deleteTurno } from "@/app/actions";
 import {
   SHIFTS,
@@ -82,26 +83,42 @@ export default function Calendar({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("lista");
   const [onlyMine, setOnlyMine] = useState(false);
+  // Giorno target per lo scroll (es. dopo tap da vista Mese).
+  // Se impostato, la vista Lista scrolla a questo giorno invece di "oggi".
+  const [scrollTargetDay, setScrollTargetDay] = useState<string | null>(null);
+
+  const router = useRouter();
 
   // Ref per auto-scroll al giorno corrente (solo vista Lista mobile).
   const todayRef = useRef<HTMLDivElement>(null);
+  // Ref per scroll a un giorno specifico (es. dopo tap da vista Mese).
+  const dayRef = useRef<HTMLDivElement>(null);
 
   const days = weekDays(mondayIso);
   const todayIso = new Date().toISOString().slice(0, 10);
   const todayIsInWeek = days.includes(todayIso);
 
-  // Auto-scroll fluido al giorno corrente (solo vista Lista).
+  // Auto-scroll fluido: al giorno corrente (default) o al giorno target
+  // (dopo tap da vista Mese). Solo vista Lista mobile.
   useEffect(() => {
     if (viewMode !== "lista") return;
-    if (!todayIsInWeek) return;
+    // Se c'è un target specifico, scrolla a quello; altrimenti a "oggi".
+    const target = scrollTargetDay ?? (todayIsInWeek ? todayIso : null);
+    if (!target || !days.includes(target)) {
+      // Se il target non è nella settimana visualizzata, scrolla a "oggi" se presente.
+      if (todayIsInWeek) {
+        const raf = requestAnimationFrame(() => {
+          todayRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+        return () => cancelAnimationFrame(raf);
+      }
+      return;
+    }
     const raf = requestAnimationFrame(() => {
-      todayRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      dayRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     return () => cancelAnimationFrame(raf);
-  }, [todayIsInWeek, mondayIso, viewMode]);
+  }, [viewMode, mondayIso, scrollTargetDay, todayIsInWeek, todayIso, days]);
 
   // Mappa turni settimana per accesso rapido: key = `${date}|${slot}`
   const turniMap = useMemo(() => {
@@ -160,6 +177,18 @@ export default function Calendar({
 
   const openCreate = (date: string, slot: ShiftSlot) => setModal({ kind: "create", date, slot });
   const openEdit = (turno: TurnoWithMember) => setModal({ kind: "edit", turno });
+
+  // Handler: tap su un giorno nella vista Mese.
+  // Passa alla vista Lista, naviga alla settimana corretta e scrolla al giorno.
+  function handleSelectDay(iso: string) {
+    const targetMonday = mondayOfWeekFromDate(iso);
+    setScrollTargetDay(iso);
+    setViewMode("lista");
+    // Se il giorno è in una settimana diversa da quella attuale, naviga.
+    if (targetMonday !== mondayIso) {
+      router.push(`/?week=${targetMonday}`);
+    }
+  }
 
   // Stile inline per pulsanti nav (riusato)
   const navBtnStyle: React.CSSProperties = {
@@ -295,6 +324,8 @@ export default function Calendar({
             onDelete={handleDelete}
             openCreate={openCreate}
             todayRef={todayRef}
+            dayRef={dayRef}
+            scrollTargetDay={scrollTargetDay}
           />
         </>
       )}
@@ -307,6 +338,7 @@ export default function Calendar({
           currentUserId={currentUserId}
           onlyMine={onlyMine}
           setOnlyMine={setOnlyMine}
+          onSelectDay={handleSelectDay}
         />
       )}
 
@@ -473,12 +505,14 @@ function MonthView({
   currentUserId,
   onlyMine,
   setOnlyMine,
+  onSelectDay,
 }: {
   mondayIso: string;
   monthTurniByDay: Map<string, TurnoWithMember[]>;
   currentUserId: string;
   onlyMine: boolean;
   setOnlyMine: (v: boolean) => void;
+  onSelectDay: (iso: string) => void;
 }) {
   const grid = useMemo(() => monthGrid(mondayIso), [mondayIso]);
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -539,10 +573,11 @@ function MonthView({
           const dimmed = onlyMine && !hasMine;
 
           return (
-            <Link
+            <button
+              type="button"
               key={iso}
-              href={`/?week=${mondayOfWeekFromDate(iso)}`}
-              className="relative flex min-h-[64px] flex-col rounded-lg border p-1.5 transition-all"
+              onClick={() => onSelectDay(iso)}
+              className="relative flex min-h-[64px] flex-col rounded-lg border p-1.5 text-left transition-all active:scale-95"
               style={{
                 background: today
                   ? "linear-gradient(180deg, rgba(0, 229, 255, 0.18) 0%, rgba(0, 229, 255, 0.06) 100%)"
@@ -561,6 +596,7 @@ function MonthView({
                     : "none",
                 opacity: dimmed ? 0.3 : 1,
                 filter: dimmed ? "grayscale(0.6)" : "none",
+                cursor: "pointer",
               }}
             >
               {/* Numero giorno */}
@@ -600,7 +636,7 @@ function MonthView({
                   <span className="font-mono text-[8px] text-fg-dim">+{dayTurni.length - 6}</span>
                 )}
               </div>
-            </Link>
+            </button>
           );
         })}
       </div>
@@ -773,6 +809,8 @@ function WeekViewMobile({
   onDelete,
   openCreate,
   todayRef,
+  dayRef,
+  scrollTargetDay,
 }: {
   days: string[];
   turniMap: Map<string, TurnoWithMember[]>;
@@ -782,6 +820,8 @@ function WeekViewMobile({
   onDelete: (id: string) => void;
   openCreate: (date: string, slot: ShiftSlot) => void;
   todayRef: React.RefObject<HTMLDivElement | null>;
+  dayRef: React.RefObject<HTMLDivElement | null>;
+  scrollTargetDay: string | null;
 }) {
   return (
     <div className="space-y-5 sm:hidden">
@@ -798,7 +838,13 @@ function WeekViewMobile({
         return (
           <div
             key={iso}
-            ref={today ? todayRef : undefined}
+            ref={
+              iso === scrollTargetDay
+                ? dayRef
+                : today
+                  ? todayRef
+                  : undefined
+            }
             className={`${
               today
                 ? "today-card panel-no-blur"
