@@ -123,7 +123,22 @@ export default function Calendar({
   const [modal, setModal] = useState<ModalState>({ kind: "closed" });
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("lista");
+  // Persisti viewMode in sessionStorage: le navigazioni con <Link>
+  // attivano loading.tsx che smonta il Calendar; al remount, senza
+  // persistenza, viewMode ripristinerebbe "lista" di default.
+  const [viewMode, setViewModeRaw] = useState<ViewMode>(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("turni-viewMode");
+      if (saved === "mese" || saved === "lista") return saved;
+    }
+    return "lista";
+  });
+  const setViewMode = (v: ViewMode) => {
+    setViewModeRaw(v);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("turni-viewMode", v);
+    }
+  };
   const [onlyMine, setOnlyMine] = useState(false);
   // Giorno target per lo scroll (es. dopo tap da vista Mese).
   // Se impostato, la vista Lista scrolla a questo giorno invece di "oggi".
@@ -201,26 +216,29 @@ export default function Calendar({
   const prevIso = prevWeek.toISOString().slice(0, 10);
   const nextIso = nextWeek.toISOString().slice(0, 10);
 
-  // Navigazione mese (vista Mese): sposta il mese di ±1 e restituisce
-  // il lunedì della settimana contenente il primo del mese target.
-  // Questo permette di riutilizzare lo stesso parametro ?week= che
-  // determina sia la settimana (vista Lista) sia il mese (vista Mese).
-  const prevMonthMonday = useMemo(() => {
+  // Navigazione mese (vista Mese): sposta il mese di ±1 e usa il 15°
+  // giorno del mese target come riferimento. Il 15° è garantito nello
+  // stesso mese (anche se il lunedì della sua settimana cade nel mese
+  // precedente, monthRange() deriva il mese dal mondayIso che a sua
+  // volta deriva dal 15°, che è sempre nel mese corretto).
+  // Usare il 1° del mese causava bug: se il 1° è sabato/domenica, il
+  // lunedì della sua settimana ricade nel mese precedente.
+  const prevMonthRef = useMemo(() => {
     const d = new Date(mondayIso + "T00:00:00Z");
+    d.setUTCDate(15); // evita overflow setUTCMonth (es. 31 mar -> 31 feb)
     d.setUTCMonth(d.getUTCMonth() - 1);
-    d.setUTCDate(1);
     return mondayOfWeekFromDate(d.toISOString().slice(0, 10));
   }, [mondayIso]);
-  const nextMonthMonday = useMemo(() => {
+  const nextMonthRef = useMemo(() => {
     const d = new Date(mondayIso + "T00:00:00Z");
+    d.setUTCDate(15);
     d.setUTCMonth(d.getUTCMonth() + 1);
-    d.setUTCDate(1);
     return mondayOfWeekFromDate(d.toISOString().slice(0, 10));
   }, [mondayIso]);
 
   // Destinazioni di navigazione condizionali in base alla vista attiva.
-  const prevHref = viewMode === "mese" ? `/?week=${prevMonthMonday}` : `/?week=${prevIso}`;
-  const nextHref = viewMode === "mese" ? `/?week=${nextMonthMonday}` : `/?week=${nextIso}`;
+  const prevHref = viewMode === "mese" ? `/?week=${prevMonthRef}` : `/?week=${prevIso}`;
+  const nextHref = viewMode === "mese" ? `/?week=${nextMonthRef}` : `/?week=${nextIso}`;
   // "Oggi" torna alla settimana corrente in entrambe le viste; in Vista
   // Mese questo mostra il mese corrente (la settimana corrente è nel
   // mese corrente).
