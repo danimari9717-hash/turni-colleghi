@@ -625,18 +625,31 @@ export default function Calendar({
       {/* ============ VISTA LISTA (default) ============ */}
       {viewMode === "lista" && (
         <div key="lista" className="view-transition">
-          {/* Legenda fasce */}
-          <div className="mb-4 flex flex-wrap gap-4">
+          {/* Legenda fasce — stile pill glassmorphism */}
+          <div className="mb-4 flex flex-wrap gap-2.5">
             {SHIFT_ORDER.map((slot) => {
               const shift = SHIFTS[slot];
               return (
-                <div key={slot} className="flex items-center gap-2">
+                <div
+                  key={slot}
+                  className="flex items-center gap-2 rounded-full border px-3 py-1.5"
+                  style={{
+                    background: `linear-gradient(135deg, ${shift.color.bg} 0%, rgba(255,255,255,0.02) 100%)`,
+                    borderColor: `${shift.color.accent}30`,
+                  }}
+                >
                   <span
-                    className="h-2.5 w-2.5 rounded-sm"
-                    style={{ background: shift.color.accent, boxShadow: `0 0 8px ${shift.color.glow}` }}
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{
+                      background: shift.color.accent,
+                      boxShadow: `0 0 8px ${shift.color.glow}, 0 0 2px ${shift.color.accent}`,
+                    }}
                   />
-                  <span className="font-mono text-xs text-fg-muted">
-                    {shift.label} <span className="text-fg-dim">{shift.start}–{shift.end}</span>
+                  <span className="font-mono text-xs font-medium" style={{ color: shift.color.accent }}>
+                    {shift.label}
+                  </span>
+                  <span className="font-mono text-[10px] text-fg-dim">
+                    {shift.start}–{shift.end}
                   </span>
                 </div>
               );
@@ -1249,9 +1262,9 @@ function WeekViewDesktop({
 }) {
   return (
     <div className="panel hidden overflow-hidden sm:block">
-      {/* Header giorni */}
+      {/* Header giorni — mini-cal icon + glow oggi */}
       <div className="grid grid-cols-[100px_repeat(7,1fr)] border-b border-border bg-surface-2">
-        <div className="px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider text-fg-dim">
+        <div className="px-3 py-3 font-mono text-[11px] uppercase tracking-wider text-fg-dim">
           Fascia
         </div>
         {days.map((iso) => {
@@ -1260,7 +1273,7 @@ function WeekViewDesktop({
           return (
             <div
               key={iso}
-              className={`px-3 py-2.5 text-center border-l border-border ${
+              className={`relative px-3 py-3 text-center border-l border-border ${
                 today ? "today-highlight" : ""
               }`}
             >
@@ -1272,18 +1285,24 @@ function WeekViewDesktop({
                 {label.weekday}
               </div>
               <div
-                className={`font-mono text-sm font-medium ${
+                className={`mt-0.5 font-mono text-lg font-bold ${
                   today ? "text-white" : "text-fg"
                 }`}
+                style={today ? { textShadow: "0 0 12px rgba(0, 229, 255, 0.4)" } : undefined}
               >
                 {label.day}
               </div>
+              {today && (
+                <span className="mt-1 inline-block rounded-full bg-accent/20 px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase text-accent">
+                  Oggi
+                </span>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* Righe fasce */}
+      {/* Righe fasce — strip colorata laterale */}
       {SHIFT_ORDER.map((slot) => {
         const shift = SHIFTS[slot];
         return (
@@ -1292,11 +1311,19 @@ function WeekViewDesktop({
             className="grid grid-cols-[100px_repeat(7,1fr)] border-b border-border last:border-b-0"
           >
             <div
-              className="flex flex-col justify-center px-3 py-3 border-r border-border"
+              className="relative flex flex-col justify-center px-3 py-3 border-r border-border"
               style={{ background: shift.color.bg }}
             >
+              {/* Strip colorata sinistra */}
               <div
-                className="font-mono text-xs font-medium uppercase tracking-wider"
+                className="absolute left-0 top-0 h-full w-1"
+                style={{
+                  background: `linear-gradient(180deg, ${shift.color.accent} 0%, ${shift.color.accent}40 100%)`,
+                  boxShadow: `0 0 8px ${shift.color.glow}`,
+                }}
+              />
+              <div
+                className="font-mono text-xs font-bold uppercase tracking-wider"
                 style={{ color: shift.color.accent }}
               >
                 {shift.label}
@@ -1398,7 +1425,7 @@ function WeekViewMobile({
   scrollTargetDay: string | null;
 }) {
   return (
-    <div className="space-y-5 sm:hidden">
+    <div className="space-y-4 sm:hidden">
       {days.map((iso) => {
         const label = formatDayLabel(iso);
         const today = isToday(iso);
@@ -1408,6 +1435,7 @@ function WeekViewMobile({
           turni: turniMap.get(`${iso}|${slot}`) ?? [],
         }));
         const dayHasTurni = dayTurni.some((d) => d.turni.length > 0);
+        const totalTurni = dayTurni.reduce((n, d) => n + d.turni.length, 0);
 
         return (
           <div
@@ -1427,43 +1455,86 @@ function WeekViewMobile({
                   : "panel-no-blur"
             } overflow-hidden`}
           >
-            {/* Header giorno */}
+            {/* Header giorno — gradiente + icona + badge turni */}
             <div
-              className={`flex items-center justify-between px-5 py-4 border-b border-border ${
-                today ? "today-highlight" : "bg-surface-2"
+              className={`relative flex items-center justify-between overflow-hidden px-5 py-4 border-b ${
+                today ? "today-highlight" : ""
               }`}
+              style={{
+                borderColor: today ? "rgba(0, 229, 255, 0.3)" : "rgba(255, 255, 255, 0.08)",
+                background: today
+                  ? undefined
+                  : dayHasTurni
+                    ? "linear-gradient(135deg, rgba(0, 255, 163, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%)"
+                    : "rgba(255, 255, 255, 0.03)",
+              }}
             >
-              <div className="flex items-baseline gap-3">
-                <span
-                  className={`font-mono text-xs uppercase tracking-wider ${
-                    today ? "text-accent" : "text-fg-dim"
-                  }`}
+              <div className="flex items-center gap-3">
+                {/* Mini-calendario icon */}
+                <div
+                  className="flex h-10 w-10 flex-col items-center justify-center rounded-xl border"
+                  style={{
+                    background: today
+                      ? "linear-gradient(160deg, rgba(0, 229, 255, 0.25) 0%, rgba(0, 229, 255, 0.08) 100%)"
+                      : "rgba(255, 255, 255, 0.05)",
+                    borderColor: today ? "rgba(0, 229, 255, 0.4)" : "rgba(255, 255, 255, 0.1)",
+                  }}
                 >
-                  {label.weekday}
-                </span>
-                <span
-                  className={`font-mono text-base font-semibold ${
-                    today ? "text-white" : "text-fg"
-                  }`}
-                >
-                  {label.day}
-                </span>
-                {today && (
-                  <span className="rounded-md bg-accent/20 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-accent">
-                    Oggi
+                  <span
+                    className={`font-mono text-[8px] uppercase leading-none ${
+                      today ? "text-accent" : "text-fg-dim"
+                    }`}
+                  >
+                    {label.weekday.slice(0, 3)}
                   </span>
-                )}
+                  <span
+                    className={`font-mono text-base font-bold leading-tight ${
+                      today ? "text-white" : "text-fg"
+                    }`}
+                  >
+                    {label.day}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span
+                    className={`font-mono text-xs uppercase tracking-wider ${
+                      today ? "text-accent" : "text-fg-muted"
+                    }`}
+                  >
+                    {label.weekday}
+                  </span>
+                  {today && (
+                    <span className="mt-0.5 w-fit rounded-full bg-accent/20 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-accent">
+                      Oggi
+                    </span>
+                  )}
+                </div>
               </div>
-              <span
-                className={`font-mono text-[11px] ${
-                  dayHasTurni ? "text-accent" : "text-fg-dim"
-                }`}
-              >
-                {dayHasTurni ? `${dayTurni.reduce((n, d) => n + d.turni.length, 0)} turni` : "vuoto"}
-              </span>
+              {/* Badge contatore turni */}
+              {dayHasTurni ? (
+                <div
+                  className="flex items-center gap-1.5 rounded-full px-2.5 py-1"
+                  style={{
+                    background: "rgba(0, 255, 163, 0.1)",
+                    border: "1px solid rgba(0, 255, 163, 0.25)",
+                  }}
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ background: "#00ffa3", boxShadow: "0 0 6px #00ffa3" }}
+                  />
+                  <span className="font-mono text-[11px] font-bold" style={{ color: "#00ffa3" }}>
+                    {totalTurni}
+                  </span>
+                </div>
+              ) : (
+                <span className="font-mono text-[10px] uppercase tracking-wider text-fg-dim">
+                  vuoto
+                </span>
+              )}
             </div>
 
-            {/* 3 fasce */}
+            {/* 3 fasce — strip colorata laterale */}
             <div className="divide-y divide-border">
               {dayTurni.map(({ slot, shift, turni: cellTurni }) => {
                 const hasTurni = cellTurni.length > 0;
@@ -1472,17 +1543,28 @@ function WeekViewMobile({
                   <div
                     key={slot}
                     className="group relative flex items-stretch transition-colors"
-                    style={{ background: hasTurni ? shift.color.bg : "var(--color-base)" }}
+                    style={{ background: hasTurni ? shift.color.bg : "transparent" }}
                     onClick={() => {
                       if (isAdmin && canAddMore && !hasTurni) openCreate(iso, slot);
                     }}
                     role={isAdmin && canAddMore && !hasTurni ? "button" : undefined}
                     title={isAdmin && canAddMore && !hasTurni ? "Tocca per assegnare turno" : undefined}
                   >
+                    {/* Strip colorata laterale (accento fascia) */}
+                    <div
+                      className="w-1.5 shrink-0"
+                      style={{
+                        background: hasTurni
+                          ? `linear-gradient(180deg, ${shift.color.accent} 0%, ${shift.color.accent}40 100%)`
+                          : "rgba(255, 255, 255, 0.06)",
+                        boxShadow: hasTurni ? `0 0 8px ${shift.color.glow}` : "none",
+                      }}
+                    />
+
                     {/* Label fascia */}
-                    <div className="flex w-20 shrink-0 flex-col justify-center px-3 py-3 border-r border-border">
+                    <div className="flex w-20 shrink-0 flex-col justify-center px-3 py-3">
                       <div
-                        className="font-mono text-[11px] font-medium uppercase tracking-wider"
+                        className="font-mono text-[11px] font-bold uppercase tracking-wider"
                         style={{ color: shift.color.accent }}
                       >
                         {shift.label}
@@ -1514,7 +1596,7 @@ function WeekViewMobile({
                                 e.stopPropagation();
                                 openCreate(iso, slot);
                               }}
-                              className="flex w-full items-center justify-center rounded-md border border-dashed py-1 text-xs transition-opacity active:opacity-100"
+                              className="press-state flex w-full items-center justify-center rounded-lg border border-dashed py-1 text-xs transition-opacity active:opacity-100"
                               style={{ borderColor: `${shift.color.accent}40`, color: shift.color.accent }}
                             >
                               + seconda persona
@@ -1522,9 +1604,13 @@ function WeekViewMobile({
                           )}
                         </div>
                       ) : (
-                        isAdmin && canAddMore && (
+                        isAdmin && canAddMore ? (
                           <div className="flex h-10 items-center justify-center opacity-30 transition-opacity group-active:opacity-70">
                             <span className="font-mono text-base" style={{ color: shift.color.accent }}>+</span>
+                          </div>
+                        ) : (
+                          <div className="flex h-10 items-center px-2">
+                            <span className="font-mono text-[10px] text-fg-dim opacity-50">—</span>
                           </div>
                         )
                       )}
@@ -1553,25 +1639,54 @@ interface TurnoCardProps {
 }
 
 function TurnoCard({ turno, shift, isAdmin, deleting, onEdit, onDelete }: TurnoCardProps) {
+  const nome = turno.member_nome ?? "—";
+  const entry = personColorEntry(nome);
+
   return (
     <div
       className="max-w-full px-3 py-2 animate-fade-in"
       style={{
-        background: "rgba(46, 125, 50, 0.22)",
-        border: "1.5px solid rgba(111, 227, 165, 0.5)",
-        borderRadius: "20px",
-        boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 2px 14px rgba(0, 0, 0, 0.22)",
+        background: `linear-gradient(135deg, rgba(46, 125, 50, 0.22) 0%, ${entry.color}15 100%)`,
+        border: `1.5px solid ${entry.color}50`,
+        borderRadius: "16px",
+        boxShadow: `inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 2px 12px rgba(0, 0, 0, 0.22), 0 0 0 0 ${entry.color}00`,
       }}
     >
-      <div className="flex items-center justify-between gap-1">
-        <a
-          href={`/turno/${turno.id}`}
-          className="block truncate text-sm font-medium transition hover:opacity-80"
-          style={{ color: "var(--color-shift-card-fg)" }}
-          onClick={(e) => e.stopPropagation()}
+      <div className="flex items-center gap-2">
+        {/* Avatar iniziale colorata */}
+        <span
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-bold"
+          style={{
+            background: entry.color,
+            color: entry.textColor,
+            fontSize: "11px",
+            boxShadow: `0 0 8px ${entry.color}40`,
+          }}
         >
-          {turno.member_nome ?? "—"}
-        </a>
+          {personInitial(nome)}
+        </span>
+
+        {/* Nome + nota */}
+        <div className="min-w-0 flex-1">
+          <a
+            href={`/turno/${turno.id}`}
+            className="block truncate text-sm font-semibold transition hover:opacity-80"
+            style={{ color: "var(--color-shift-card-fg)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {nome}
+          </a>
+          {turno.note && (
+            <div
+              className="mt-0.5 truncate text-xs"
+              style={{ color: "var(--color-shift-card-fg)", opacity: 0.65 }}
+            >
+              {turno.note}
+            </div>
+          )}
+        </div>
+
+        {/* Pulsanti admin */}
         {isAdmin && (
           <div className="flex shrink-0 gap-1 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
             <button
@@ -1580,7 +1695,7 @@ function TurnoCard({ turno, shift, isAdmin, deleting, onEdit, onDelete }: TurnoC
                 e.stopPropagation();
                 onEdit(turno);
               }}
-              className="rounded p-0.5 text-fg-dim transition hover:text-accent"
+              className="press-state rounded p-1 text-fg-dim transition hover:text-accent"
               aria-label="Modifica"
               title="Modifica"
             >
@@ -1593,7 +1708,7 @@ function TurnoCard({ turno, shift, isAdmin, deleting, onEdit, onDelete }: TurnoC
                 onDelete(turno.id);
               }}
               disabled={deleting}
-              className="rounded p-0.5 text-fg-dim transition hover:text-red-400 disabled:opacity-50"
+              className="press-state rounded p-1 text-fg-dim transition hover:text-red-400 disabled:opacity-50"
               aria-label="Elimina"
               title="Elimina"
             >
@@ -1602,14 +1717,6 @@ function TurnoCard({ turno, shift, isAdmin, deleting, onEdit, onDelete }: TurnoC
           </div>
         )}
       </div>
-      {turno.note && (
-        <div
-          className="mt-1 truncate text-xs"
-          style={{ color: "var(--color-shift-card-fg)", opacity: 0.7 }}
-        >
-          {turno.note}
-        </div>
-      )}
     </div>
   );
 }
