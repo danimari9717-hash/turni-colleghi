@@ -742,97 +742,181 @@ function StatsCarousel({
   return (
     <div className="mb-6 -mx-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
       <div className="flex gap-3" style={{ minWidth: "min-content" }}>
-        {/* Card 1: Il tuo mese */}
+        {/* ============================================================
+            Card 1: Il tuo mese — ciano, gradiente accento
+            ============================================================ */}
         <div
-          className="flex shrink-0 flex-col rounded-2xl border p-4"
+          className="flex shrink-0 flex-col justify-between rounded-2xl border p-4"
           style={{
-            width: "200px",
-            background: "var(--color-surface-active)",
-            borderColor: "rgba(0, 229, 255, 0.25)",
-            boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 2px 12px rgba(0, 0, 0, 0.22)",
+            width: "210px",
+            minHeight: "120px",
+            background:
+              "linear-gradient(160deg, rgba(0, 229, 255, 0.12) 0%, var(--color-surface-active) 60%)",
+            borderColor: "rgba(0, 229, 255, 0.35)",
+            boxShadow:
+              "inset 0 1px 0 0 rgba(255, 255, 255, 0.1), 0 4px 20px rgba(0, 229, 255, 0.12)",
           }}
         >
-          <div className="font-mono text-[10px] uppercase tracking-wider text-fg-dim">
-            Il tuo mese
-          </div>
-          <div className="mt-2 flex items-baseline gap-1">
-            <span className="font-mono text-3xl font-bold text-accent">
-              {stats.myMonthHours}
+          <div className="flex items-center gap-1.5">
+            <span
+              className="flex h-5 w-5 items-center justify-center rounded-md text-[10px]"
+              style={{ background: "rgba(0, 229, 255, 0.2)", color: "var(--color-accent)" }}
+            >
+              ⏱
             </span>
-            <span className="font-mono text-xs text-fg-muted">ore</span>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-accent">
+              Il tuo mese
+            </span>
           </div>
-          <div className="mt-1 font-mono text-xs text-fg-muted">
-            {stats.myMonthTurniCount} turni
+          <div className="mt-3">
+            <div className="flex items-baseline gap-1.5">
+              <span
+                className="font-mono text-4xl font-bold"
+                style={{
+                  background: "linear-gradient(135deg, #00e5ff 0%, #00ffa3 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
+                {stats.myMonthHours}
+              </span>
+              <span className="font-mono text-sm text-fg-muted">ore</span>
+            </div>
+            <div className="mt-1.5 flex items-center gap-2">
+              <span
+                className="rounded-full px-2 py-0.5 font-mono text-[10px] font-bold"
+                style={{ background: "rgba(0, 229, 255, 0.15)", color: "var(--color-accent)" }}
+              >
+                {stats.myMonthTurniCount} turni
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Card 2: Podio FantaTab */}
+        {/* ============================================================
+            Card 2: Prossimo turno — verde acqua, glow
+            ============================================================ */}
         <div
-          className="flex shrink-0 flex-col rounded-2xl border p-4"
+          className="flex shrink-0 flex-col justify-between rounded-2xl border p-4"
           style={{
-            width: "220px",
-            background: "var(--color-surface-active)",
-            borderColor: "rgba(255, 210, 74, 0.25)",
-            boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 2px 12px rgba(0, 0, 0, 0.22)",
+            width: "210px",
+            minHeight: "120px",
+            background:
+              "linear-gradient(160deg, rgba(0, 255, 163, 0.12) 0%, var(--color-surface-active) 60%)",
+            borderColor: "rgba(0, 255, 163, 0.35)",
+            boxShadow:
+              "inset 0 1px 0 0 rgba(255, 255, 255, 0.1), 0 4px 20px rgba(0, 255, 163, 0.12)",
           }}
         >
-          <div className="font-mono text-[10px] uppercase tracking-wider text-fg-dim">
-            Podio FantaTab
+          <div className="flex items-center gap-1.5">
+            <span
+              className="flex h-5 w-5 items-center justify-center rounded-md text-[10px]"
+              style={{ background: "rgba(0, 255, 163, 0.2)", color: "#00ffa3" }}
+            >
+              📅
+            </span>
+            <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: "#00ffa3" }}>
+              Prossimo turno
+            </span>
           </div>
-          <div className="mt-2 space-y-1.5">
+          {stats.nextTurno ? (
+            <div className="mt-3">
+              <div
+                className="font-mono text-2xl font-bold text-fg"
+                style={{ textShadow: "0 0 12px rgba(0, 255, 163, 0.25)" }}
+              >
+                {formatDayLabel(stats.nextTurno.data).weekday}{" "}
+                {stats.nextTurno.data.slice(8)}
+              </div>
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ background: "#00ffa3", boxShadow: "0 0 8px #00ffa3" }}
+                />
+                <span className="font-mono text-sm font-medium text-fg-muted">
+                  {stats.nextTurno.oraInizio} – {stats.nextTurno.oraFine}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 flex items-center gap-1.5">
+              <span className="text-base opacity-50">🌙</span>
+              <span className="font-mono text-xs text-fg-dim">
+                Nessun turno programmato
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* ============================================================
+            Card 3: Podio FantaTab — oro, gradiente caldo
+            ============================================================ */}
+        <div
+          className="flex shrink-0 flex-col justify-between rounded-2xl border p-4"
+          style={{
+            width: "230px",
+            minHeight: "120px",
+            background:
+              "linear-gradient(160deg, rgba(255, 210, 74, 0.12) 0%, var(--color-surface-active) 60%)",
+            borderColor: "rgba(255, 210, 74, 0.35)",
+            boxShadow:
+              "inset 0 1px 0 0 rgba(255, 255, 255, 0.1), 0 4px 20px rgba(255, 210, 74, 0.1)",
+          }}
+        >
+          <div className="flex items-center gap-1.5">
+            <span
+              className="flex h-5 w-5 items-center justify-center rounded-md text-[10px]"
+              style={{ background: "rgba(255, 210, 74, 0.2)", color: "#ffd24a" }}
+            >
+              🏆
+            </span>
+            <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: "#ffd24a" }}>
+              Podio FantaTab
+            </span>
+          </div>
+          <div className="mt-3 space-y-1.5">
             {stats.podio.length === 0 ? (
               <div className="font-mono text-xs text-fg-dim">Nessun dato</div>
             ) : (
-              stats.podio.map((r, i) => (
-                <div key={r.user_id} className="flex items-center gap-2">
-                  <span className="text-sm">{positions[i]}</span>
-                  <span
-                    className="truncate text-xs font-medium"
-                    style={{ color: r.user_id === currentUserId ? "var(--color-accent)" : "var(--color-fg)" }}
+              stats.podio.map((r, i) => {
+                const isMe = r.user_id === currentUserId;
+                return (
+                  <div
+                    key={r.user_id}
+                    className="flex items-center gap-2 rounded-lg px-2 py-1"
+                    style={{
+                      background: isMe ? "rgba(0, 229, 255, 0.08)" : "rgba(255, 255, 255, 0.03)",
+                    }}
                   >
-                    {r.nome}
-                  </span>
-                  <span className="ml-auto font-mono text-xs font-bold" style={{ color: VALUTE.fuoco.color }}>
-                    {r.totale_fuoco}
-                  </span>
-                  {r.totale_diamanti > 0 && (
-                    <span className="font-mono text-xs" style={{ color: VALUTE.diamante.color }}>
-                      {r.totale_diamanti}💎
+                    <span className="text-sm" style={{ filter: i === 0 ? "drop-shadow(0 0 4px rgba(255, 210, 74, 0.5))" : "none" }}>
+                      {positions[i]}
                     </span>
-                  )}
-                </div>
-              ))
+                    <span
+                      className="truncate text-xs font-semibold"
+                      style={{ color: isMe ? "var(--color-accent)" : "var(--color-fg)" }}
+                    >
+                      {r.nome}
+                    </span>
+                    <span
+                      className="ml-auto font-mono text-xs font-bold"
+                      style={{ color: VALUTE.fuoco.color }}
+                    >
+                      {r.totale_fuoco}🔥
+                    </span>
+                    {r.totale_diamanti > 0 && (
+                      <span
+                        className="font-mono text-xs"
+                        style={{ color: VALUTE.diamante.color }}
+                      >
+                        {r.totale_diamanti}💎
+                      </span>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
-        </div>
-
-        {/* Card 3: Prossimo turno */}
-        <div
-          className="flex shrink-0 flex-col rounded-2xl border p-4"
-          style={{
-            width: "200px",
-            background: "var(--color-surface-active)",
-            borderColor: "rgba(0, 255, 163, 0.25)",
-            boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 2px 12px rgba(0, 0, 0, 0.22)",
-          }}
-        >
-          <div className="font-mono text-[10px] uppercase tracking-wider text-fg-dim">
-            Prossimo turno
-          </div>
-          {stats.nextTurno ? (
-            <>
-              <div className="mt-2 font-mono text-lg font-bold text-fg">
-                {formatDayLabel(stats.nextTurno.data).weekday} {stats.nextTurno.data.slice(8)}
-              </div>
-              <div className="mt-1 font-mono text-xs text-fg-muted">
-                {stats.nextTurno.oraInizio} – {stats.nextTurno.oraFine}
-              </div>
-            </>
-          ) : (
-            <div className="mt-2 font-mono text-xs text-fg-dim">
-              Nessun turno programmato
-            </div>
-          )}
         </div>
       </div>
     </div>
