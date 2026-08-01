@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { hapticLight } from "@/lib/haptics";
 import { deleteTurno } from "@/app/actions";
 import {
   SHIFTS,
@@ -317,8 +318,8 @@ export default function Calendar({
         >
           <button
             type="button"
-            onClick={() => setViewMode("lista")}
-            className="rounded-lg px-5 py-1.5 text-sm font-medium transition-all"
+            onClick={() => { hapticLight(); setViewMode("lista"); }}
+            className="press-state rounded-lg px-5 py-1.5 text-sm font-medium transition-all"
             style={
               viewMode === "lista"
                 ? {
@@ -333,8 +334,8 @@ export default function Calendar({
           </button>
           <button
             type="button"
-            onClick={() => setViewMode("mese")}
-            className="rounded-lg px-5 py-1.5 text-sm font-medium transition-all"
+            onClick={() => { hapticLight(); setViewMode("mese"); }}
+            className="press-state rounded-lg px-5 py-1.5 text-sm font-medium transition-all"
             style={
               viewMode === "mese"
                 ? {
@@ -362,20 +363,20 @@ export default function Calendar({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Link href={prevHref} className="px-3 py-2 text-sm" aria-label="Precedente" style={navBtnStyle}>
+          <Link href={prevHref} className="press-state px-3 py-2 text-sm" aria-label="Precedente" style={navBtnStyle}>
             ←
           </Link>
-          <Link href={todayHref} className="px-4 py-2 text-sm font-medium" style={navBtnStyle}>
+          <Link href={todayHref} className="press-state px-4 py-2 text-sm font-medium" style={navBtnStyle}>
             Oggi
           </Link>
-          <Link href={nextHref} className="px-3 py-2 text-sm" aria-label="Successivo" style={navBtnStyle}>
+          <Link href={nextHref} className="press-state px-3 py-2 text-sm" aria-label="Successivo" style={navBtnStyle}>
             →
           </Link>
           {isAdmin && viewMode === "lista" && (
             <button
               type="button"
-              onClick={() => setModal({ kind: "create-blank" })}
-              className="btn-accent px-4 py-2 text-sm"
+              onClick={() => { hapticLight(); setModal({ kind: "create-blank" }); }}
+              className="press-state btn-accent px-4 py-2 text-sm"
             >
               + Nuovo turno
             </button>
@@ -385,7 +386,7 @@ export default function Calendar({
 
       {/* ============ VISTA LISTA (default) ============ */}
       {viewMode === "lista" && (
-        <>
+        <div key="lista" className="view-transition">
           {/* Legenda fasce */}
           <div className="mb-4 flex flex-wrap gap-4">
             {SHIFT_ORDER.map((slot) => {
@@ -428,12 +429,13 @@ export default function Calendar({
             dayRef={dayRef}
             scrollTargetDay={scrollTargetDay}
           />
-        </>
+        </div>
       )}
 
       {/* ============ VISTA MESE ============ */}
       {viewMode === "mese" && (
-        <MonthView
+        <div key="mese" className="view-transition">
+          <MonthView
           mondayIso={mondayIso}
           monthRefIso={isDefaultWeek ? todayIso : mondayIso}
           monthTurniByDay={monthTurniByDay}
@@ -442,6 +444,7 @@ export default function Calendar({
           setOnlyMine={setOnlyMine}
           onSelectDay={handleSelectDay}
         />
+        </div>
       )}
 
       {/* Errore delete */}
@@ -651,8 +654,8 @@ function MonthView({
           <span className="font-mono text-xs text-fg-muted">Solo i miei turni</span>
           <button
             type="button"
-            onClick={() => setOnlyMine(!onlyMine)}
-            className="relative h-6 w-11 rounded-full transition-colors"
+            onClick={() => { hapticLight(); setOnlyMine(!onlyMine); }}
+            className="press-state-opacity relative h-6 w-11 rounded-full transition-colors"
             style={{
               background: onlyMine
                 ? "linear-gradient(135deg, #00e5ff 0%, #00ffa3 100%)"
@@ -746,7 +749,7 @@ function MonthDayCell({
       onTouchStart={tap.onTouchStart}
       onTouchMove={tap.onTouchMove}
       onClick={tap.onClick}
-      className="relative flex min-h-[64px] flex-col rounded-lg border p-1.5 text-left transition-all active:scale-95"
+      className="press-state relative flex min-h-[64px] flex-col rounded-lg border p-1.5 text-left transition-all"
       style={{
         background: today
           ? "linear-gradient(180deg, rgba(0, 229, 255, 0.18) 0%, rgba(0, 229, 255, 0.06) 100%)"

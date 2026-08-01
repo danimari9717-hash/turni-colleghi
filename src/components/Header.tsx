@@ -42,14 +42,14 @@ export default function Header({ profile }: HeaderProps) {
           <div className="hidden items-center gap-4 sm:flex">
             <Link
               href="/classifica"
-              className="font-mono text-sm text-fg-muted transition hover:text-accent"
+              className="press-state font-mono text-sm text-fg-muted transition hover:text-accent"
             >
               Classifica - FantaTab
             </Link>
             {isAdmin && (
               <Link
                 href="/utenti"
-                className="font-mono text-sm text-fg-muted transition hover:text-accent"
+                className="press-state font-mono text-sm text-fg-muted transition hover:text-accent"
               >
                 Utenti
               </Link>
@@ -76,7 +76,7 @@ export default function Header({ profile }: HeaderProps) {
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-fg-muted transition hover:text-fg sm:hidden"
+            className="press-state flex h-9 w-9 items-center justify-center rounded-lg border border-border text-fg-muted transition hover:text-fg sm:hidden"
             aria-label="Menu"
             aria-expanded={menuOpen}
           >
@@ -112,14 +112,14 @@ export default function Header({ profile }: HeaderProps) {
               <Link
                 href="/"
                 onClick={() => setMenuOpen(false)}
-                className="block rounded-md px-3 py-2 font-mono text-sm text-fg-muted transition hover:bg-surface-2 hover:text-fg"
+                className="press-state block rounded-md px-3 py-2 font-mono text-sm text-fg-muted transition hover:bg-surface-2 hover:text-fg"
               >
                 Calendario
               </Link>
               <Link
                 href="/classifica"
                 onClick={() => setMenuOpen(false)}
-                className="block rounded-md px-3 py-2 font-mono text-sm text-fg-muted transition hover:bg-surface-2 hover:text-fg"
+                className="press-state block rounded-md px-3 py-2 font-mono text-sm text-fg-muted transition hover:bg-surface-2 hover:text-fg"
               >
                 Classifica - FantaTab
               </Link>
@@ -127,7 +127,7 @@ export default function Header({ profile }: HeaderProps) {
                 <Link
                   href="/utenti"
                   onClick={() => setMenuOpen(false)}
-                  className="block rounded-md px-3 py-2 font-mono text-sm text-fg-muted transition hover:bg-surface-2 hover:text-fg"
+                  className="press-state block rounded-md px-3 py-2 font-mono text-sm text-fg-muted transition hover:bg-surface-2 hover:text-fg"
                 >
                   Gestione utenti
                 </Link>
@@ -140,7 +140,7 @@ export default function Header({ profile }: HeaderProps) {
               <form action={signOut}>
                 <button
                   type="submit"
-                  className="block w-full rounded-md px-3 py-2 text-left font-mono text-sm text-fg-muted transition hover:bg-surface-2 hover:text-fg"
+                  className="press-state block w-full rounded-md px-3 py-2 text-left font-mono text-sm text-fg-muted transition hover:bg-surface-2 hover:text-fg"
                 >
                   Esci
                 </button>
