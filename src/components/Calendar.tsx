@@ -1455,7 +1455,7 @@ function WeekViewMobile({
                   : "panel-no-blur"
             } overflow-hidden`}
           >
-            {/* Header giorno — gradiente + icona + badge turni */}
+            {/* Header giorno — mini-cal 3D style + glow */}
             <div
               className={`relative flex items-center justify-between overflow-hidden px-5 py-4 border-b ${
                 today ? "today-highlight" : ""
@@ -1469,68 +1469,112 @@ function WeekViewMobile({
                     : "rgba(255, 255, 255, 0.03)",
               }}
             >
-              <div className="flex items-center gap-3">
-                {/* Mini-calendario icon */}
+              <div className="flex items-center gap-3.5">
+                {/* Mini-calendario 3D — stile "pagina strappata" */}
                 <div
-                  className="flex h-10 w-10 flex-col items-center justify-center rounded-xl border"
+                  className="relative flex h-14 w-14 flex-col items-center justify-center overflow-hidden rounded-2xl"
                   style={{
                     background: today
-                      ? "linear-gradient(160deg, rgba(0, 229, 255, 0.25) 0%, rgba(0, 229, 255, 0.08) 100%)"
-                      : "rgba(255, 255, 255, 0.05)",
-                    borderColor: today ? "rgba(0, 229, 255, 0.4)" : "rgba(255, 255, 255, 0.1)",
+                      ? "linear-gradient(165deg, rgba(0, 229, 255, 0.3) 0%, rgba(0, 229, 255, 0.08) 100%)"
+                      : dayHasTurni
+                        ? "linear-gradient(165deg, rgba(0, 255, 163, 0.18) 0%, rgba(255, 255, 255, 0.04) 100%)"
+                        : "linear-gradient(165deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)",
+                    border: `1.5px solid ${
+                      today
+                        ? "rgba(0, 229, 255, 0.5)"
+                        : dayHasTurni
+                          ? "rgba(0, 255, 163, 0.35)"
+                          : "rgba(255, 255, 255, 0.12)"
+                    }`,
+                    boxShadow: today
+                      ? "0 4px 16px rgba(0, 229, 255, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.15)"
+                      : dayHasTurni
+                        ? "0 4px 16px rgba(0, 255, 163, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.1)"
+                        : "inset 0 1px 0 0 rgba(255, 255, 255, 0.06)",
                   }}
                 >
+                  {/* "Rilegatura" superiore colorata */}
+                  <div
+                    className="absolute left-0 right-0 top-0 h-1.5"
+                    style={{
+                      background: today
+                        ? "linear-gradient(90deg, #00e5ff 0%, #00ffa3 100%)"
+                        : dayHasTurni
+                          ? "linear-gradient(90deg, rgba(0, 255, 163, 0.6) 0%, rgba(0, 255, 163, 0.2) 100%)"
+                          : "rgba(255, 255, 255, 0.1)",
+                      boxShadow: today ? "0 0 8px rgba(0, 229, 255, 0.5)" : "none",
+                    }}
+                  />
+                  {/* Giorno del mese — grande e bold */}
                   <span
-                    className={`font-mono text-[8px] uppercase leading-none ${
-                      today ? "text-accent" : "text-fg-dim"
-                    }`}
-                  >
-                    {label.weekday.slice(0, 3)}
-                  </span>
-                  <span
-                    className={`font-mono text-base font-bold leading-tight ${
-                      today ? "text-white" : "text-fg"
-                    }`}
+                    className="font-mono text-2xl font-black leading-none"
+                    style={{
+                      color: today ? "#ffffff" : dayHasTurni ? "var(--color-fg)" : "var(--color-fg-muted)",
+                      textShadow: today ? "0 1px 8px rgba(0, 229, 255, 0.4)" : "none",
+                    }}
                   >
                     {label.day}
                   </span>
-                </div>
-                <div className="flex flex-col">
+                  {/* Weekday — piccolo sotto */}
                   <span
-                    className={`font-mono text-xs uppercase tracking-wider ${
-                      today ? "text-accent" : "text-fg-muted"
-                    }`}
+                    className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-widest leading-none"
+                    style={{
+                      color: today ? "var(--color-accent)" : dayHasTurni ? "rgba(0, 255, 163, 0.7)" : "var(--color-fg-dim)",
+                    }}
+                  >
+                    {label.weekday.slice(0, 3)}
+                  </span>
+                </div>
+
+                {/* Nome giorno completo + badge Oggi */}
+                <div className="flex flex-col gap-1">
+                  <span
+                    className="font-mono text-sm font-semibold uppercase tracking-wider"
+                    style={{
+                      color: today ? "var(--color-accent)" : dayHasTurni ? "var(--color-fg)" : "var(--color-fg-muted)",
+                    }}
                   >
                     {label.weekday}
                   </span>
-                  {today && (
-                    <span className="mt-0.5 w-fit rounded-full bg-accent/20 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-accent">
-                      Oggi
+                  {today ? (
+                    <span
+                      className="w-fit rounded-full px-2.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest"
+                      style={{
+                        background: "linear-gradient(135deg, rgba(0, 229, 255, 0.25) 0%, rgba(0, 255, 163, 0.15) 100%)",
+                        color: "var(--color-accent)",
+                        border: "1px solid rgba(0, 229, 255, 0.3)",
+                      }}
+                    >
+                      ● Oggi
+                    </span>
+                  ) : dayHasTurni ? (
+                    <span className="font-mono text-[10px] text-fg-dim">
+                      {totalTurni} {totalTurni === 1 ? "turno" : "turni"}
+                    </span>
+                  ) : (
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-fg-dim opacity-60">
+                      Riposo
                     </span>
                   )}
                 </div>
               </div>
-              {/* Badge contatore turni */}
-              {dayHasTurni ? (
+              {/* Badge contatore turni (solo se ha turni, per oggi) */}
+              {dayHasTurni && today && (
                 <div
-                  className="flex items-center gap-1.5 rounded-full px-2.5 py-1"
+                  className="flex items-center gap-1.5 rounded-full px-3 py-1.5"
                   style={{
-                    background: "rgba(0, 255, 163, 0.1)",
-                    border: "1px solid rgba(0, 255, 163, 0.25)",
+                    background: "linear-gradient(135deg, rgba(0, 255, 163, 0.15) 0%, rgba(0, 229, 255, 0.1) 100%)",
+                    border: "1px solid rgba(0, 255, 163, 0.3)",
                   }}
                 >
                   <span
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{ background: "#00ffa3", boxShadow: "0 0 6px #00ffa3" }}
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: "#00ffa3", boxShadow: "0 0 8px #00ffa3" }}
                   />
-                  <span className="font-mono text-[11px] font-bold" style={{ color: "#00ffa3" }}>
+                  <span className="font-mono text-sm font-bold" style={{ color: "#00ffa3" }}>
                     {totalTurni}
                   </span>
                 </div>
-              ) : (
-                <span className="font-mono text-[10px] uppercase tracking-wider text-fg-dim">
-                  vuoto
-                </span>
               )}
             </div>
 
