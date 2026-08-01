@@ -51,9 +51,14 @@ export default async function Home({
   const startDay = days[0];
   const endDay = days[6];
 
-  // Range del mese corrente (per vista Mese + carosello "Il tuo mese").
-  const mRange = monthRange(mondayIso);
+  // Range del mese per vista Mese + carosello "Il tuo mese".
+  // Quando non c'è weekParam (apertura di default), usa todayIso come
+  // riferimento mese: mondayOfWeek(today) può cadere nel mese precedente
+  // se oggi è nei primi giorni del mese (es. sabato 1 agosto → lunedì 27
+  // luglio → monthRange = luglio, ma dovrebbe essere agosto).
+  // Quando c'è weekParam (navigazione esplicita), usa mondayIso.
   const todayIso = new Date().toISOString().slice(0, 10);
+  const mRange = weekParam ? monthRange(mondayIso) : monthRange(todayIso);
 
   // Query parallele: tutti i dati necessari in un unico round-trip logico.
   // 1. profile (utente corrente)
@@ -183,6 +188,7 @@ export default async function Home({
           members={members ?? []}
           isAdmin={isAdmin}
           mondayIso={mondayIso}
+          todayIso={todayIso}
           currentUserId={user.id}
           stats={{
             myMonthHours,

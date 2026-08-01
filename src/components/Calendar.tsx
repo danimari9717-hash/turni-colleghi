@@ -56,6 +56,7 @@ interface CalendarProps {
   members: TeamMember[];
   isAdmin: boolean;
   mondayIso: string;
+  todayIso: string; // data di oggi (per calcolo mese corrente in Vista Mese)
   currentUserId: string;
   stats: StatsData;
 }
@@ -119,6 +120,7 @@ export default function Calendar({
   members,
   isAdmin,
   mondayIso,
+  todayIso,
   currentUserId,
   stats,
 }: CalendarProps) {
@@ -154,7 +156,6 @@ export default function Calendar({
   const dayRef = useRef<HTMLDivElement>(null);
 
   const days = weekDays(mondayIso);
-  const todayIso = new Date().toISOString().slice(0, 10);
   const todayIsInWeek = days.includes(todayIso);
 
   // Auto-scroll fluido: al giorno corrente (default) o al giorno target
@@ -218,25 +219,30 @@ export default function Calendar({
   const prevIso = prevWeek.toISOString().slice(0, 10);
   const nextIso = nextWeek.toISOString().slice(0, 10);
 
-  // Navigazione mese (vista Mese): sposta il mese di ±1 e usa il 15°
-  // giorno del mese target come riferimento. Il 15° è garantito nello
-  // stesso mese (anche se il lunedì della sua settimana cade nel mese
-  // precedente, monthRange() deriva il mese dal mondayIso che a sua
-  // volta deriva dal 15°, che è sempre nel mese corretto).
-  // Usare il 1° del mese causava bug: se il 1° è sabato/domenica, il
-  // lunedì della sua settimana ricade nel mese precedente.
+  // Determina se mondayIso è la settimana di default (no navigazione
+  // esplicita). In tal caso, la Vista Mese deve usare todayIso come
+  // riferimento mese: mondayOfWeek(today) può cadere nel mese precedente
+  // se oggi è nei primi giorni del mese (es. sabato 1 agosto → lunedì 27
+  // luglio → monthRange = luglio, ma dovrebbe essere agosto).
+  const isDefaultWeek = mondayIso === mondayOfWeekFromDate(todayIso);
+  const monthRefIso = isDefaultWeek ? todayIso : mondayIso;
+
+  // Navigazione mese (vista Mese): sposta il mese di ±1 a partire da
+  // monthRefIso e usa il 15° giorno del mese target come riferimento.
+  // Il 15° è garantito nello stesso mese (evita overflow setUTCMonth
+  // e il bug del 1° del mese che può cadere nel mese precedente).
   const prevMonthRef = useMemo(() => {
-    const d = new Date(mondayIso + "T00:00:00Z");
-    d.setUTCDate(15); // evita overflow setUTCMonth (es. 31 mar -> 31 feb)
+    const d = new Date(monthRefIso + "T00:00:00Z");
+    d.setUTCDate(15);
     d.setUTCMonth(d.getUTCMonth() - 1);
     return mondayOfWeekFromDate(d.toISOString().slice(0, 10));
-  }, [mondayIso]);
+  }, [monthRefIso]);
   const nextMonthRef = useMemo(() => {
-    const d = new Date(mondayIso + "T00:00:00Z");
+    const d = new Date(monthRefIso + "T00:00:00Z");
     d.setUTCDate(15);
     d.setUTCMonth(d.getUTCMonth() + 1);
     return mondayOfWeekFromDate(d.toISOString().slice(0, 10));
-  }, [mondayIso]);
+  }, [monthRefIso]);
 
   // Destinazioni di navigazione condizionali in base alla vista attiva.
   const prevHref = viewMode === "mese" ? `/?week=${prevMonthRef}` : `/?week=${prevIso}`;
@@ -248,7 +254,9 @@ export default function Calendar({
 
   const firstLabel = formatDayLabel(days[0]);
   const lastLabel = formatDayLabel(days[6]);
-  const mRange = monthRange(mondayIso);
+  // Calcolo mese per Vista Mese: usa monthRefIso (todayIso se default,
+  // mondayIso se navigato).
+  const mRange = monthRange(monthRefIso);
   const monthName = new Date(Date.UTC(mRange.year, mRange.month, 1)).toLocaleDateString("it-IT", {
     month: "long",
     year: "numeric",
@@ -427,6 +435,7 @@ export default function Calendar({
       {viewMode === "mese" && (
         <MonthView
           mondayIso={mondayIso}
+          monthRefIso={isDefaultWeek ? todayIso : mondayIso}
           monthTurniByDay={monthTurniByDay}
           currentUserId={currentUserId}
           onlyMine={onlyMine}
@@ -594,6 +603,7 @@ function StatsCarousel({
 // ============================================================================
 function MonthView({
   mondayIso,
+  monthRefIso,
   monthTurniByDay,
   currentUserId,
   onlyMine,
@@ -601,13 +611,14 @@ function MonthView({
   onSelectDay,
 }: {
   mondayIso: string;
+  monthRefIso: string; // data di riferimento per calcolare il mese da mostrare
   monthTurniByDay: Map<string, TurnoWithMember[]>;
   currentUserId: string;
   onlyMine: boolean;
   setOnlyMine: (v: boolean) => void;
   onSelectDay: (iso: string) => void;
 }) {
-  const grid = useMemo(() => monthGrid(mondayIso), [mondayIso]);
+  const grid = useMemo(() => monthGrid(monthRefIso), [monthRefIso]);
   const todayIso = new Date().toISOString().slice(0, 10);
   const weekdays = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
   const legend = useMemo(() => personColorList(), []);
