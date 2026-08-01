@@ -252,7 +252,15 @@ export function personInitial(nome: string): string {
   return (nome.trim()[0] ?? "?").toUpperCase();
 }
 
-// Restituisce tutte le persone note (per legenda).
+// Restituisce tutte le persone note (per legenda), deduplicate per label.
+// La mappa può contenere alias (es. "enri" e "enrica" per la stessa
+// persona) che condividono la stessa label — la legenda deve mostrarli
+// una sola volta.
 export function personColorList(): PersonColorEntry[] {
-  return Object.values(PERSON_COLOR_MAP);
+  const seen = new Set<string>();
+  return Object.values(PERSON_COLOR_MAP).filter((entry) => {
+    if (seen.has(entry.label)) return false;
+    seen.add(entry.label);
+    return true;
+  });
 }
