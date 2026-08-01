@@ -113,24 +113,19 @@ function useTapHandler(onTap: () => void) {
 }
 
 // ============================================================================
-//  useLongPress: rileva long-press (400ms) su un avatar turno.
-//  Mostra una tendina di anteprima con i dettagli del turno.
-//  Si chiude al rilascio del dito o se il dito si sposta (>10px).
+//  useCellInteraction: tap + long-press combinato sulle celle-giorno.
+//  - Tap netto (< 400ms, < 10px movimento) → onTap (naviga a Vista Lista)
+//  - Long-press (≥ 400ms, < 10px movimento) → onLongPress (mostra popup giorno)
+//  - Scroll/swipe (> 10px movimento) → ignora entrambi
 // ============================================================================
+const INTERACTION_THRESHOLD = 10; // px
 const LONG_PRESS_DELAY = 400; // ms
-const LONG_PRESS_MOVE_THRESHOLD = 10; // px
 
-interface LongPressState {
-  activeTurno: TurnoWithMember | null;
-  pressX: number;
-  pressY: number;
-}
-
-function useLongPress() {
-  const [preview, setPreview] = useState<LongPressState | null>(null);
+function useCellInteraction(onTap: () => void, onLongPress: (x: number, y: number) => void) {
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+  const movedRef = useRef(false);
+  const longPressFiredRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Coordinate iniziali del touch/mouse, per calcolare lo spostamento.
-  const startCoordRef = useRef<{ x: number; y: number } | null>(null);
 
   const clearTimer = () => {
     if (timerRef.current !== null) {
@@ -139,157 +134,219 @@ function useLongPress() {
     }
   };
 
-  const onAvatarTouchStart = (e: React.TouchEvent, turno: TurnoWithMember) => {
+  const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
-    startCoordRef.current = { x: t.clientX, y: t.clientY };
+    startRef.current = { x: t.clientX, y: t.clientY };
+    movedRef.current = false;
+    longPressFiredRef.current = false;
+    clearTimer();
     timerRef.current = setTimeout(() => {
-      hapticLight();
-      setPreview({
-        activeTurno: turno,
-        pressX: t.clientX,
-        pressY: t.clientY,
-      });
+      if (!movedRef.current) {
+        longPressFiredRef.current = true;
+        hapticLight();
+        onLongPress(t.clientX, t.clientY);
+      }
     }, LONG_PRESS_DELAY);
   };
 
-  const onAvatarTouchMove = (e: React.TouchEvent) => {
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!startRef.current) return;
     const t = e.touches[0];
-    const start = startCoordRef.current;
-    if (!start) return;
-    const dx = t.clientX - start.x;
-    const dy = t.clientY - start.y;
-    // Se il dito si sposta oltre la soglia, cancella timer e chiudi preview.
-    if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_THRESHOLD) {
+    const dx = t.clientX - startRef.current.x;
+    const dy = t.clientY - startRef.current.y;
+    if (Math.hypot(dx, dy) > INTERACTION_THRESHOLD) {
+      movedRef.current = true;
       clearTimer();
-      setPreview(null);
     }
   };
 
-  const onAvatarTouchEnd = () => {
+  const onTouchEnd = () => {
     clearTimer();
-    setPreview(null);
-    startCoordRef.current = null;
   };
 
-  // Per desktop: mouse hold
-  const onAvatarMouseDown = (e: React.MouseEvent, turno: TurnoWithMember) => {
-    startCoordRef.current = { x: e.clientX, y: e.clientY };
+  const onClick = (e: React.MouseEvent) => {
+    // Se long-press è scattato o il dito si è mosso, ignora il tap.
+    if (longPressFiredRef.current || movedRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    onTap();
+  };
+
+  // Desktop: mouse hold per long-press
+  const onMouseDown = (e: React.MouseEvent) => {
+    startRef.current = { x: e.clientX, y: e.clientY };
+    movedRef.current = false;
+    longPressFiredRef.current = false;
+    clearTimer();
     timerRef.current = setTimeout(() => {
-      setPreview({
-        activeTurno: turno,
-        pressX: e.clientX,
-        pressY: e.clientY,
-      });
+      if (!movedRef.current) {
+        longPressFiredRef.current = true;
+        onLongPress(e.clientX, e.clientY);
+      }
     }, LONG_PRESS_DELAY);
   };
 
-  const onAvatarMouseUp = () => {
+  const onMouseUp = () => {
     clearTimer();
-    setPreview(null);
-    startCoordRef.current = null;
   };
 
-  const onAvatarMouseLeave = () => {
+  const onMouseLeave = () => {
     clearTimer();
-    setPreview(null);
-    startCoordRef.current = null;
   };
 
-  return {
-    preview,
-    onAvatarTouchStart,
-    onAvatarTouchMove,
-    onAvatarTouchEnd,
-    onAvatarMouseDown,
-    onAvatarMouseUp,
-    onAvatarMouseLeave,
-  };
+  return { onTouchStart, onTouchMove, onTouchEnd, onClick, onMouseDown, onMouseUp, onMouseLeave };
 }
 
 // ============================================================================
-//  TurnoPreview: tendina popup di anteprima (long-press, sola lettura).
+//  DayPreview: popup con TUTTI i turni del giorno (long-press, sola lettura).
+//  Si chiude al rilascio del dito o al tap fuori.
 // ============================================================================
-function TurnoPreview({
-  turno,
+function DayPreview({
+  dayIso,
+  dayTurni,
+  currentUserId,
   x,
   y,
+  onClose,
 }: {
-  turno: TurnoWithMember;
+  dayIso: string;
+  dayTurni: TurnoWithMember[];
+  currentUserId: string;
   x: number;
   y: number;
+  onClose: () => void;
 }) {
-  const nome = turno.member_nome ?? "—";
-  const entry = personColorEntry(nome);
-  const slot = slotFromStart(turno.ora_inizio.slice(0, 5));
-  const slotLabel = slot ? SHIFTS[slot].label : turno.ora_inizio.slice(0, 5);
-  const slotColor = slot ? SHIFTS[slot].color.accent : "#9aa7b8";
-  const dateLabel = formatDayLabel(turno.data);
+  const dateLabel = formatDayLabel(dayIso);
+  const isTodayCell = isToday(dayIso);
 
-  // Posizionamento: cerca di stare sopra il punto di tocco, con
-  // margine dal bordo schermo. Clamp orizzontale per non uscire.
-  const popupWidth = 200;
-  const popupHeight = 120;
+  // Ordina turni per fascia (Mattina → Pomeriggio → Notte).
+  const slotOrder: Record<string, number> = { morning: 0, afternoon: 1, night: 2 };
+  const sorted = [...dayTurni].sort((a, b) => {
+    const sa = slotFromStart(a.ora_inizio.slice(0, 5));
+    const sb = slotFromStart(b.ora_inizio.slice(0, 5));
+    const oa = sa !== null ? slotOrder[sa] : 99;
+    const ob = sb !== null ? slotOrder[sb] : 99;
+    if (oa !== ob) return oa - ob;
+    return a.ora_inizio.localeCompare(b.ora_inizio);
+  });
+
+  // Posizionamento con clamp orizzontale.
+  const popupWidth = 240;
   const margin = 8;
   const left = Math.max(margin, Math.min(x - popupWidth / 2, window.innerWidth - popupWidth - margin));
-  // Se c'è spazio sopra, metti sopra; altrimenti sotto.
-  const top = y - popupHeight - margin > 0 ? y - popupHeight - margin : y + margin;
+  // Stima altezza per decidere sopra/sotto.
+  const estimatedHeight = Math.max(80, sorted.length * 44 + 48);
+  const top = y - estimatedHeight - margin > 0 ? y - estimatedHeight - margin : y + margin;
 
   return (
-    <div
-      className="animate-scale-in"
-      style={{
-        position: "fixed",
-        left,
-        top,
-        width: popupWidth,
-        zIndex: 9999,
-        pointerEvents: "none",
-      }}
-    >
+    <>
+      {/* Overlay per chiudere al tap fuori (desktop) */}
       <div
-        className="rounded-xl border p-3 shadow-lg"
+        onClick={onClose}
+        style={{ position: "fixed", inset: 0, zIndex: 9998 }}
+      />
+      <div
+        className="animate-scale-in"
         style={{
-          background: "var(--color-surface-active)",
-          borderColor: "rgba(255, 255, 255, 0.22)",
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)",
+          position: "fixed",
+          left,
+          top,
+          width: popupWidth,
+          zIndex: 9999,
         }}
       >
-        {/* Header: avatar + nome */}
-        <div className="flex items-center gap-2">
-          <span
-            className="flex h-7 w-7 items-center justify-center rounded-full font-bold"
-            style={{ background: entry.color, color: entry.textColor, fontSize: "12px" }}
-          >
-            {personInitial(nome)}
-          </span>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-fg">{nome}</div>
-            <div className="font-mono text-[10px] text-fg-dim">
-              {dateLabel.weekday} {dateLabel.day}
+        <div
+          className="rounded-xl border p-3 shadow-lg"
+          style={{
+            background: "var(--color-surface-active)",
+            borderColor: isTodayCell ? "rgba(0, 229, 255, 0.4)" : "rgba(255, 255, 255, 0.22)",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)",
+          }}
+        >
+          {/* Header: data */}
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-baseline gap-2">
+              <span
+                className={`font-mono text-xs uppercase tracking-wider ${
+                  isTodayCell ? "text-accent" : "text-fg-dim"
+                }`}
+              >
+                {dateLabel.weekday}
+              </span>
+              <span
+                className={`font-mono text-sm font-semibold ${
+                  isTodayCell ? "text-white" : "text-fg"
+                }`}
+              >
+                {dateLabel.day}
+              </span>
+              {isTodayCell && (
+                <span className="rounded bg-accent/20 px-1.5 font-mono text-[8px] font-bold uppercase text-accent">
+                  Oggi
+                </span>
+              )}
             </div>
+            <span className="font-mono text-[10px] text-fg-dim">
+              {sorted.length > 0 ? `${sorted.length} turni` : "vuoto"}
+            </span>
           </div>
+
+          {/* Lista turni */}
+          {sorted.length === 0 ? (
+            <div className="py-3 text-center font-mono text-xs text-fg-dim">
+              Nessun turno assegnato
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {sorted.map((t) => {
+                const nome = t.member_nome ?? "—";
+                const entry = personColorEntry(nome);
+                const slot = slotFromStart(t.ora_inizio.slice(0, 5));
+                const slotLabel = slot ? SHIFTS[slot].label : "—";
+                const slotColor = slot ? SHIFTS[slot].color.accent : "#9aa7b8";
+                const isMe = t.user_id === currentUserId;
+                return (
+                  <div
+                    key={t.id}
+                    className="flex items-center gap-2 rounded-lg px-2 py-1.5"
+                    style={{ background: "rgba(255, 255, 255, 0.04)" }}
+                  >
+                    <span
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-bold"
+                      style={{ background: entry.color, color: entry.textColor, fontSize: "10px" }}
+                    >
+                      {personInitial(nome)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div
+                        className="truncate text-xs font-medium"
+                        style={{ color: isMe ? "var(--color-accent)" : "var(--color-fg)" }}
+                      >
+                        {nome}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span
+                          className="h-1.5 w-1.5 rounded-sm"
+                          style={{ background: slotColor }}
+                        />
+                        <span className="font-mono text-[10px]" style={{ color: slotColor }}>
+                          {slotLabel}
+                        </span>
+                        <span className="font-mono text-[10px] text-fg-muted">
+                          {t.ora_inizio.slice(0, 5)}–{t.ora_fine.slice(0, 5)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-        {/* Fascia oraria */}
-        <div className="mt-2 flex items-center gap-1.5">
-          <span
-            className="h-2 w-2 rounded-sm"
-            style={{ background: slotColor, boxShadow: `0 0 6px ${slotColor}55` }}
-          />
-          <span className="font-mono text-xs" style={{ color: slotColor }}>
-            {slotLabel}
-          </span>
-          <span className="font-mono text-xs text-fg-muted">
-            {turno.ora_inizio.slice(0, 5)}–{turno.ora_fine.slice(0, 5)}
-          </span>
-        </div>
-        {/* Nota (se presente) */}
-        {turno.note && (
-          <div className="mt-2 truncate text-xs text-fg-muted" title={turno.note}>
-            {turno.note}
-          </div>
-        )}
       </div>
-    </div>
+    </>
   );
 }
 
@@ -922,16 +979,24 @@ function MonthDayCell({
   currentUserId: string;
   onSelectDay: (iso: string) => void;
 }) {
-  const tap = useTapHandler(() => onSelectDay(iso));
-  const longPress = useLongPress();
+  const [dayPreview, setDayPreview] = useState<{ x: number; y: number } | null>(null);
+
+  const interaction = useCellInteraction(
+    () => onSelectDay(iso), // tap → naviga a Vista Lista
+    (x, y) => setDayPreview({ x, y }), // long-press → mostra popup giorno
+  );
 
   return (
     <>
       <button
         type="button"
-        onTouchStart={tap.onTouchStart}
-        onTouchMove={tap.onTouchMove}
-        onClick={tap.onClick}
+        onTouchStart={interaction.onTouchStart}
+        onTouchMove={interaction.onTouchMove}
+        onTouchEnd={interaction.onTouchEnd}
+        onClick={interaction.onClick}
+        onMouseDown={interaction.onMouseDown}
+        onMouseUp={interaction.onMouseUp}
+        onMouseLeave={interaction.onMouseLeave}
         className="press-state relative flex min-h-[64px] flex-col rounded-lg border p-1.5 text-left transition-all"
         style={{
           background: today
@@ -952,10 +1017,7 @@ function MonthDayCell({
           opacity: dimmed ? 0.3 : 1,
           filter: dimmed ? "grayscale(0.6)" : "none",
           cursor: "pointer",
-          // touch-action: pan-y permette lo scroll verticale nativo del
-          // browser senza che il browser attenda il nostro handler custom.
           touchAction: "pan-y",
-          // Prevenisci menu contestuale iOS e selezione testo su long-press.
           WebkitTouchCallout: "none",
           WebkitUserSelect: "none",
           userSelect: "none",
@@ -978,13 +1040,8 @@ function MonthDayCell({
         </div>
 
         {/* Avatar iniziali colorate (stile Google Calendar) */}
-        {/* Ordine fisso: Mattina → Pomeriggio → Notte (da sinistra a destra).
-            Deduplica per user_id: una persona può avere più turni lo stesso
-            giorno; viene mostrata nella posizione del suo primo turno secondo
-            l'ordine delle fasce. */}
         <div className="mt-1 flex items-center">
           {(() => {
-            // Ordina per fascia (Mattina < Pomeriggio < Notte), poi per ora.
             const slotOrder: Record<string, number> = {
               morning: 0,
               afternoon: 1,
@@ -998,7 +1055,6 @@ function MonthDayCell({
               if (oa !== ob) return oa - ob;
               return a.ora_inizio.localeCompare(b.ora_inizio);
             });
-            // Deduplica per user_id mantenendo il primo (in ordine fascia).
             const seen = new Set<string>();
             const unique = sorted.filter((t) => {
               if (seen.has(t.user_id)) return false;
@@ -1024,45 +1080,15 @@ function MonthDayCell({
                         fontSize: "9px",
                         background: entry.color,
                         color: entry.textColor,
-                        // Sovrapposizione: primo avatar a sinistra, successivi
-                        // si sovrappongono di ~6px (33% di 18px).
                         marginLeft: idx === 0 ? 0 : "-6px",
-                        // Bordo del colore della cella per separare gli avatar
                         border: `1.5px solid ${
                           today ? "rgba(0, 229, 255, 0.3)" : "var(--color-base)"
                         }`,
-                        // Glow per l'avatar dell'utente corrente
                         boxShadow: isMe ? `0 0 6px ${entry.color}` : "none",
-                        zIndex: shown.length - idx, // primo avatar sopra gli altri
-                        // Prevenisci menu contestuale iOS su avatar.
+                        zIndex: shown.length - idx,
                         WebkitTouchCallout: "none",
                         WebkitUserSelect: "none",
                         userSelect: "none",
-                      }}
-                      // Long-press per anteprima
-                      onTouchStart={(e) => {
-                        e.stopPropagation();
-                        longPress.onAvatarTouchStart(e, t);
-                      }}
-                      onTouchMove={(e) => {
-                        e.stopPropagation();
-                        longPress.onAvatarTouchMove(e);
-                      }}
-                      onTouchEnd={(e) => {
-                        e.stopPropagation();
-                        longPress.onAvatarTouchEnd();
-                      }}
-                      onMouseDown={(e) => {
-                        e.stopPropagation();
-                        longPress.onAvatarMouseDown(e, t);
-                      }}
-                      onMouseUp={(e) => {
-                        e.stopPropagation();
-                        longPress.onAvatarMouseUp();
-                      }}
-                      onMouseLeave={(e) => {
-                        e.stopPropagation();
-                        longPress.onAvatarMouseLeave();
                       }}
                     >
                       {personInitial(nome)}
@@ -1093,12 +1119,15 @@ function MonthDayCell({
           })()}
         </div>
       </button>
-      {/* Tendina anteprima long-press */}
-      {longPress.preview?.activeTurno && (
-        <TurnoPreview
-          turno={longPress.preview.activeTurno}
-          x={longPress.preview.pressX}
-          y={longPress.preview.pressY}
+      {/* Popup long-press: tutti i turni del giorno */}
+      {dayPreview && (
+        <DayPreview
+          dayIso={iso}
+          dayTurni={dayTurni}
+          currentUserId={currentUserId}
+          x={dayPreview.x}
+          y={dayPreview.y}
+          onClose={() => setDayPreview(null)}
         />
       )}
     </>
