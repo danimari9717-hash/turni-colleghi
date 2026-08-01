@@ -1469,10 +1469,10 @@ function WeekViewMobile({
                     : "rgba(255, 255, 255, 0.03)",
               }}
             >
-              <div className="flex items-center gap-3.5">
+              <div className="flex items-center gap-3">
                 {/* Mini-calendario 3D — stile "pagina strappata" */}
                 <div
-                  className="relative flex h-14 w-14 flex-col items-center justify-center overflow-hidden rounded-2xl"
+                  className="relative flex h-12 w-12 flex-col items-center justify-center overflow-hidden rounded-xl"
                   style={{
                     background: today
                       ? "linear-gradient(165deg, rgba(0, 229, 255, 0.3) 0%, rgba(0, 229, 255, 0.08) 100%)"
@@ -1495,7 +1495,7 @@ function WeekViewMobile({
                 >
                   {/* "Rilegatura" superiore colorata */}
                   <div
-                    className="absolute left-0 right-0 top-0 h-1.5"
+                    className="absolute left-0 right-0 top-0 h-1"
                     style={{
                       background: today
                         ? "linear-gradient(90deg, #00e5ff 0%, #00ffa3 100%)"
@@ -1505,19 +1505,19 @@ function WeekViewMobile({
                       boxShadow: today ? "0 0 8px rgba(0, 229, 255, 0.5)" : "none",
                     }}
                   />
-                  {/* Giorno del mese — grande e bold */}
+                  {/* Giorno del mese */}
                   <span
-                    className="font-mono text-2xl font-black leading-none"
+                    className="font-mono text-lg font-bold leading-none"
                     style={{
                       color: today ? "#ffffff" : dayHasTurni ? "var(--color-fg)" : "var(--color-fg-muted)",
-                      textShadow: today ? "0 1px 8px rgba(0, 229, 255, 0.4)" : "none",
+                      textShadow: today ? "0 1px 6px rgba(0, 229, 255, 0.4)" : "none",
                     }}
                   >
                     {label.day}
                   </span>
                   {/* Weekday — piccolo sotto */}
                   <span
-                    className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-widest leading-none"
+                    className="mt-0.5 font-mono text-[7px] font-bold uppercase tracking-wider leading-none"
                     style={{
                       color: today ? "var(--color-accent)" : dayHasTurni ? "rgba(0, 255, 163, 0.7)" : "var(--color-fg-dim)",
                     }}
