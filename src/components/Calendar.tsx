@@ -635,7 +635,8 @@ export default function Calendar({
                   className="flex items-center gap-2 rounded-full border px-3 py-1.5"
                   style={{
                     background: `linear-gradient(135deg, ${shift.color.bg} 0%, rgba(255,255,255,0.02) 100%)`,
-                    borderColor: `${shift.color.accent}30`,
+                    borderColor: `${shift.color.accent}40`,
+                    boxShadow: `0 0 10px ${shift.color.glow}, inset 0 1px 0 0 rgba(255,255,255,0.06)`,
                   }}
                 >
                   <span
@@ -1382,10 +1383,16 @@ function WeekViewDesktop({
                         e.stopPropagation();
                         openCreate(iso, slot);
                       }}
-                      className="mt-1.5 flex w-full items-center justify-center rounded-md border border-dashed py-1 text-xs opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-70"
-                      style={{ borderColor: `${shift.color.accent}40`, color: shift.color.accent }}
+                      className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed py-2 text-xs opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-70"
+                      style={{ borderColor: `${shift.color.accent}50`, color: shift.color.accent, minHeight: "40px" }}
                     >
-                      + seconda persona
+                      <span
+                        className="flex h-5 w-5 items-center justify-center rounded-full text-sm font-bold"
+                        style={{ background: `${shift.color.accent}1a`, border: `1px solid ${shift.color.accent}40` }}
+                      >
+                        +
+                      </span>
+                      seconda persona
                     </button>
                   )}
                 </div>
@@ -1455,7 +1462,7 @@ function WeekViewMobile({
                   : "panel-no-blur"
             } overflow-hidden`}
           >
-            {/* Header giorno — mini-cal 3D style + glow */}
+            {/* Header giorno — blocco data tipografico + glow oggi */}
             <div
               className={`relative flex items-center justify-between overflow-hidden px-5 py-4 border-b ${
                 today ? "today-highlight" : ""
@@ -1469,73 +1476,55 @@ function WeekViewMobile({
                     : "rgba(255, 255, 255, 0.03)",
               }}
             >
-              <div className="flex items-center gap-3">
-                {/* Mini-calendario 3D — stile "pagina strappata" */}
-                <div
-                  className="relative flex h-12 w-12 flex-col items-center justify-center overflow-hidden rounded-xl"
-                  style={{
-                    background: today
-                      ? "linear-gradient(165deg, rgba(0, 229, 255, 0.3) 0%, rgba(0, 229, 255, 0.08) 100%)"
-                      : dayHasTurni
-                        ? "linear-gradient(165deg, rgba(0, 255, 163, 0.18) 0%, rgba(255, 255, 255, 0.04) 100%)"
-                        : "linear-gradient(165deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%)",
-                    border: `1.5px solid ${
-                      today
-                        ? "rgba(0, 229, 255, 0.5)"
+              <div className="flex items-center gap-4">
+                {/* Blocco data tipografico — weekday piccolo sopra, numero giorno grande pulito.
+                    Nessun box quadrato/badge in competizione. Glow verde-ciano per oggi. */}
+                <div className="flex flex-col items-center justify-center leading-none">
+                  <span
+                    className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]"
+                    style={{
+                      color: today
+                        ? "var(--color-accent)"
                         : dayHasTurni
-                          ? "rgba(0, 255, 163, 0.35)"
-                          : "rgba(255, 255, 255, 0.12)"
-                    }`,
-                    boxShadow: today
-                      ? "0 4px 16px rgba(0, 229, 255, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.15)"
-                      : dayHasTurni
-                        ? "0 4px 16px rgba(0, 255, 163, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.1)"
-                        : "inset 0 1px 0 0 rgba(255, 255, 255, 0.06)",
-                  }}
-                >
-                  {/* "Rilegatura" superiore colorata */}
-                  <div
-                    className="absolute left-0 right-0 top-0 h-1"
-                    style={{
-                      background: today
-                        ? "linear-gradient(90deg, #00e5ff 0%, #00ffa3 100%)"
-                        : dayHasTurni
-                          ? "linear-gradient(90deg, rgba(0, 255, 163, 0.6) 0%, rgba(0, 255, 163, 0.2) 100%)"
-                          : "rgba(255, 255, 255, 0.1)",
-                      boxShadow: today ? "0 0 8px rgba(0, 229, 255, 0.5)" : "none",
-                    }}
-                  />
-                  {/* Giorno del mese */}
-                  <span
-                    className="font-mono text-lg font-bold leading-none"
-                    style={{
-                      color: today ? "#ffffff" : dayHasTurni ? "var(--color-fg)" : "var(--color-fg-muted)",
-                      textShadow: today ? "0 1px 6px rgba(0, 229, 255, 0.4)" : "none",
-                    }}
-                  >
-                    {label.day}
-                  </span>
-                  {/* Weekday — piccolo sotto */}
-                  <span
-                    className="mt-0.5 font-mono text-[7px] font-bold uppercase tracking-wider leading-none"
-                    style={{
-                      color: today ? "var(--color-accent)" : dayHasTurni ? "rgba(0, 255, 163, 0.7)" : "var(--color-fg-dim)",
-                    }}
-                  >
-                    {label.weekday.slice(0, 3)}
-                  </span>
-                </div>
-
-                {/* Nome giorno completo + badge Oggi */}
-                <div className="flex flex-col gap-1">
-                  <span
-                    className="font-mono text-sm font-semibold uppercase tracking-wider"
-                    style={{
-                      color: today ? "var(--color-accent)" : dayHasTurni ? "var(--color-fg)" : "var(--color-fg-muted)",
+                          ? "rgba(0, 255, 163, 0.78)"
+                          : "var(--color-fg-dim)",
                     }}
                   >
                     {label.weekday}
                   </span>
+                  <span
+                    className="mt-1 font-mono text-3xl font-bold leading-none"
+                    style={{
+                      color: today
+                        ? "#ffffff"
+                        : dayHasTurni
+                          ? "var(--color-fg)"
+                          : "var(--color-fg-muted)",
+                      textShadow: today
+                        ? "0 0 14px rgba(0, 229, 255, 0.45)"
+                        : dayHasTurni
+                          ? "0 0 10px rgba(0, 255, 163, 0.18)"
+                          : "none",
+                    }}
+                  >
+                    {iso.slice(8)}
+                  </span>
+                </div>
+
+                {/* Separatore sottile verticale */}
+                <div
+                  className="h-9 w-px"
+                  style={{
+                    background: today
+                      ? "rgba(0, 229, 255, 0.35)"
+                      : dayHasTurni
+                        ? "rgba(0, 255, 163, 0.25)"
+                        : "rgba(255, 255, 255, 0.1)",
+                  }}
+                />
+
+                {/* Subtitle: Oggi / contatore turni / Riposo */}
+                <div className="flex flex-col gap-1">
                   {today ? (
                     <span
                       className="w-fit rounded-full px-2.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest"
@@ -1548,11 +1537,11 @@ function WeekViewMobile({
                       ● Oggi
                     </span>
                   ) : dayHasTurni ? (
-                    <span className="font-mono text-[10px] text-fg-dim">
+                    <span className="font-mono text-[11px] text-fg-dim">
                       {totalTurni} {totalTurni === 1 ? "turno" : "turni"}
                     </span>
                   ) : (
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-fg-dim opacity-60">
+                    <span className="font-mono text-[11px] uppercase tracking-wider text-fg-dim opacity-60">
                       Riposo
                     </span>
                   )}
@@ -1640,10 +1629,16 @@ function WeekViewMobile({
                                 e.stopPropagation();
                                 openCreate(iso, slot);
                               }}
-                              className="press-state flex w-full items-center justify-center rounded-lg border border-dashed py-1 text-xs transition-opacity active:opacity-100"
-                              style={{ borderColor: `${shift.color.accent}40`, color: shift.color.accent }}
+                              className="press-state flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed py-2.5 text-xs font-medium transition-opacity active:opacity-100"
+                              style={{ borderColor: `${shift.color.accent}50`, color: shift.color.accent, minHeight: "44px" }}
                             >
-                              + seconda persona
+                              <span
+                                className="flex h-5 w-5 items-center justify-center rounded-full text-sm font-bold"
+                                style={{ background: `${shift.color.accent}1a`, border: `1px solid ${shift.color.accent}40` }}
+                              >
+                                +
+                              </span>
+                              seconda persona
                             </button>
                           )}
                         </div>
